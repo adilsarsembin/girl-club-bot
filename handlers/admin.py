@@ -9,7 +9,6 @@ from states.add_event import AddEventStates
 
 router = Router()
 
-
 @router.message(Command("admin"), IsAdmin())
 async def admin_panel(message: types.Message):
     """
