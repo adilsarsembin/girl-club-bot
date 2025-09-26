@@ -2,38 +2,28 @@ import asyncio
 import logging
 import os
 
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+from handlers.admin import router as admin_router
+from handlers.user import router as user_router
+
 load_dotenv()
 
-# Get the token from the environment variable
-# It's a good practice to handle the case where the token is not set
 API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
 if not API_TOKEN:
-    raise ValueError("No TELEGRAM_API_TOKEN found in environment variables")
-
-# Initialize bot and dispatcher
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
-
-# Handler for the /start command
-@dp.message(CommandStart())
-async def send_welcome(message: types.Message):
-    """
-    This handler will be called when user sends `/start` command
-    """
-    await message.reply("Hi!\nI'm GirlClub Bot! Let's get started.")
+    raise ValueError("API_TOKEN not found in environment variables")
 
 async def main():
     """The main function to start the bot."""
-    # Start polling for updates from Telegram
+    bot = Bot(token=API_TOKEN)
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
+    dp.include_routers(admin_router, user_router)
     await dp.start_polling(bot)
 
+
 if __name__ == '__main__':
-    # Set up logging to see what the bot is doing
     logging.basicConfig(level=logging.INFO)
-    # Run the main function
     asyncio.run(main())
