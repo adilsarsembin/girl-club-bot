@@ -1,18 +1,11 @@
-import os
-
 from aiogram import Router, types
 from aiogram.filters import Command
-from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 
+from database.events import add_event
 from filters import IsAdmin
 from states.add_event import AddEventStates
-
-from dotenv import load_dotenv
-
-load_dotenv()
-ADMIN_IDS_STR = os.getenv("ADMIN_IDS")
-ADMIN_IDS = {int(admin_id.strip()) for admin_id in ADMIN_IDS_STR.split(',')}
 
 router = Router()
 
@@ -53,6 +46,10 @@ async def process_place(message: Message, state: FSMContext):
     place = message.text.strip()
 
     await message.reply(f"Event data collected: {date} - {theme} at {place}")
-    # TODO: Integrate DB save here next step
+    place = message.text.strip()
+    if add_event(date, theme, place):
+        await message.reply(f"Event added: {date} - {theme} at {place}")
+    else:
+        await message.reply("Error adding event.")
 
     await state.clear()

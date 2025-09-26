@@ -6,18 +6,20 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
+from database.events import init_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 
 load_dotenv()
 
-API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
-if not API_TOKEN:
-    raise ValueError("API_TOKEN not found in environment variables")
-
 async def main():
     """The main function to start the bot."""
-    bot = Bot(token=API_TOKEN)
+    api_token = os.getenv("TELEGRAM_API_TOKEN")
+    if not api_token:
+        raise ValueError("API_TOKEN not found in environment variables")
+
+    init_db()
+    bot = Bot(token=api_token)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
     dp.include_routers(admin_router, user_router)
