@@ -6,7 +6,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
-from database.events import init_db
+from database.events import init_db as init_events_db
+from database.quotes import init_db as init_quotes_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 
@@ -18,7 +19,8 @@ async def main():
     if not api_token:
         raise ValueError("API_TOKEN not found in environment variables")
 
-    init_db()
+    init_events_db()
+    init_quotes_db()
     bot = Bot(token=api_token)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)

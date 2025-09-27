@@ -1,7 +1,8 @@
 from aiogram import Bot, Router, types
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import BotCommandScopeChat
 
+from database.quotes import get_random_quote
 from filters import IsAdmin
 
 router = Router()
@@ -23,3 +24,9 @@ async def send_welcome(message: types.Message, bot: Bot):
         await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
     else:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
+
+
+@router.message(Command("quote"))
+async def get_quote(message: types.Message):
+    quote = get_random_quote()
+    await message.reply(f"💖 {quote}")

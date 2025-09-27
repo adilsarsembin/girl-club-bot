@@ -4,8 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from database.events import add_event
+from database.quotes import add_quote
 from filters import IsAdmin
 from states.add_event import AddEventStates
+from states.add_quote import AddQuoteStates
 
 router = Router()
 
@@ -51,4 +53,19 @@ async def process_place(message: Message, state: FSMContext):
     else:
         await message.reply("Error adding event.")
 
+    await state.clear()
+
+
+@router.message(Command("add_quote"), IsAdmin())
+async def cmd_add_quote(message: Message, state: FSMContext):
+    await message.reply("Enter quote text:")
+    await state.set_state(AddQuoteStates.waiting_for_quote)
+
+@router.message(AddQuoteStates.waiting_for_quote)
+async def process_quote(message: Message, state: FSMContext):
+    text = message.text.strip()
+    if add_quote(text):
+        await message.reply("Quote added!")
+    else:
+        await message.reply("Error adding quote.")
     await state.clear()
