@@ -1,22 +1,17 @@
-from aiogram import Router, types
+from aiogram import Router, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from database.events import add_event
 from database.quotes import add_quote
+from database.users import get_all_user_ids
 from filters import IsAdmin
 from states.add_event import AddEventStates
 from states.add_quote import AddQuoteStates
+from states.send_all import SendAllStates
 
 router = Router()
-
-@router.message(Command("admin"), IsAdmin())
-async def admin_panel(message: types.Message):
-    """
-    Handler for the /admin command. Only accessible to users in ADMIN_IDS.
-    """
-    await message.reply("Welcome to the Admin Panel! 🛠️\nHere you can manage the bot's content.")
 
 
 @router.message(Command("add_event"), IsAdmin())
@@ -61,6 +56,7 @@ async def cmd_add_quote(message: Message, state: FSMContext):
     await message.reply("Enter quote text:")
     await state.set_state(AddQuoteStates.waiting_for_quote)
 
+
 @router.message(AddQuoteStates.waiting_for_quote)
 async def process_quote(message: Message, state: FSMContext):
     text = message.text.strip()
@@ -68,4 +64,24 @@ async def process_quote(message: Message, state: FSMContext):
         await message.reply("Quote added!")
     else:
         await message.reply("Error adding quote.")
+    await state.clear()
+
+
+@router.message(Command("send_all"), IsAdmin())
+async def cmd_send_all(message: Message, state: FSMContext, bot: Bot):
+    await message.reply("Enter message to send to all users:")
+    await state.set_state(SendAllStates.waiting_for_message)
+
+@router.message(SendAllStates.waiting_for_message)
+async def process_send_all(message: Message, state: FSMContext, bot: Bot):
+    text = message.text
+    user_ids = get_all_user_ids()
+    sent_count = 0
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, text)
+            sent_count += 1
+        except Exception:
+            pass
+    await message.reply(f"Message sent to {sent_count}/{len(user_ids)} users.")
     await state.clear()
