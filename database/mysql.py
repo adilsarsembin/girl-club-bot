@@ -41,8 +41,17 @@ def init_db():
             id BIGINT PRIMARY KEY,
             username VARCHAR(255),
             first_name VARCHAR(255),
-            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            role VARCHAR(20) DEFAULT 'user'
         )
     """)
+    cursor.execute("""
+                   CREATE TABLE IF NOT EXISTS anonymous_messages (
+                       id INT AUTO_INCREMENT PRIMARY KEY,
+                       user_id BIGINT NOT NULL,
+                       message TEXT NOT NULL,
+                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+   """)
     conn.commit()
     conn.close()

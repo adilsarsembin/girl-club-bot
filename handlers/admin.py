@@ -5,7 +5,7 @@ from aiogram.types import Message
 
 from database.events import add_event
 from database.quotes import add_quote
-from database.users import get_all_user_ids
+from database.users import get_all_user_ids_by_role
 from filters import IsAdmin
 from states.add_event import AddEventStates
 from states.add_quote import AddQuoteStates
@@ -75,7 +75,7 @@ async def cmd_send_all(message: Message, state: FSMContext, bot: Bot):
 @router.message(SendAllStates.waiting_for_message)
 async def process_send_all(message: Message, state: FSMContext, bot: Bot):
     text = message.text
-    user_ids = get_all_user_ids()
+    user_ids = get_all_user_ids_by_role('user')
     sent_count = 0
     for user_id in user_ids:
         try:

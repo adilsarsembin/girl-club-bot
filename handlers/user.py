@@ -1,16 +1,20 @@
 from aiogram import Bot, Router, types
 from aiogram.filters import CommandStart, Command
-from aiogram.types import BotCommandScopeChat
+from aiogram.fsm.context import FSMContext
+from aiogram.types import BotCommandScopeChat, Message
 
+from database.anonymous import save_anon_message
 from database.quotes import get_random_quote
-from database.users import add_user
+from database.users import add_user, get_all_user_ids_by_role
 from filters import IsAdmin
+from states.anonymous import AnonymousStates
 
 router = Router()
 
 user_commands = [
     types.BotCommand(command="start", description="Start bot"),
-    types.BotCommand(command="quote", description="Get random quote")
+    types.BotCommand(command="quote", description="Get random quote"),
+    types.BotCommand(command="anonymous_message", description="Send your anonymous message"),
 ]
 admin_commands = user_commands + [
     types.BotCommand(command="add_event", description="Add event"),
@@ -24,9 +28,12 @@ async def send_welcome(message: types.Message, bot: Bot):
     Handler for the /start command. This is for all users.
     """
     await message.reply("Hi!\nWelcome to the GirlClub Bot! 💖")
-    add_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    user_id = message.from_user.id
     admin_command = IsAdmin()
-    if await admin_command(message):
+    is_admin = await admin_command(user_id)
+    role = 'admin' if is_admin else 'user'
+    add_user(user_id, message.from_user.username, message.from_user.first_name, role)
+    if is_admin:
         await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
     else:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
@@ -36,3 +43,21 @@ async def send_welcome(message: types.Message, bot: Bot):
 async def get_quote(message: types.Message):
     quote = get_random_quote()
     await message.reply(f"💖 {quote}")
+
+
+@router.message(Command("anonymous_message"))
+async def cmd_anon(message: Message, state: FSMContext):
+    await message.reply("Send your anonymous message:")
+    await state.set_state(AnonymousStates.waiting_for_message)
+
+
+@router.message(AnonymousStates.waiting_for_message)
+async def process_anon(message: Message, state: FSMContext, bot: Bot):
+    text = message.text
+    save_anon_message(message.from_user.id, text)
+    formatted = f"You have anonymous message: {text}"
+    admin_ids = get_all_user_ids_by_role('admin')
+    for admin_id in admin_ids:
+        await bot.send_message(admin_id, formatted)
+    await message.reply("Message sent anonymously!")
+    await state.clear()
