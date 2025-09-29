@@ -3,6 +3,7 @@ aiogram==3.22.0
 aiogram_calendar==0.6.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
+aiohttp_socks==0.10.1
 aiosignal==1.4.0
 annotated-types==0.7.0
 APScheduler==3.11.0
@@ -25,6 +26,7 @@ pydantic_core==2.33.2
 PyMySQL==1.1.2
 PyNaCl==1.6.0
 python-dotenv==1.1.1
+python-socks==2.7.2
 typing-inspection==0.4.1
 typing_extensions==4.15.0
 tzlocal==5.3.1
