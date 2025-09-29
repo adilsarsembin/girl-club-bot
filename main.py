@@ -5,6 +5,7 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
+from urllib.parse import quote
 
 from database.mysql import init_db as init_mysql_db
 from handlers.admin import router as admin_router
@@ -20,7 +21,7 @@ async def main():
         raise ValueError("API_TOKEN not found in environment variables")
 
     init_mysql_db()
-    proxy = f'http://{os.getenv('PA_USERNAME')}:{os.getenv('PA_PASSWORD')}@proxy.server:3128'
+    proxy = f'http://{quote(os.getenv('PA_USERNAME'))}:{quote(os.getenv('PA_PASSWORD'))}@proxy.server:3128'
     bot = Bot(token=api_token, proxy=proxy)
     scheduler = get_scheduler()
     scheduler.start()
