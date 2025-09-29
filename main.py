@@ -20,7 +20,8 @@ async def main():
         raise ValueError("API_TOKEN not found in environment variables")
 
     init_mysql_db()
-    bot = Bot(token=api_token)
+    proxy = f'http://{os.getenv('PA_USERNAME')}:{os.getenv('PA_PASSWORD')}@proxy.server:3128'
+    bot = Bot(token=api_token, proxy=proxy)
     scheduler = get_scheduler()
     scheduler.start()
     storage = MemoryStorage()
