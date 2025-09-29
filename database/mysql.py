@@ -23,10 +23,11 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            date VARCHAR(10) NOT NULL,
+            planned_at DATETIME NOT NULL,
             theme TEXT NOT NULL,
             place TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_active BOOLEAN DEFAULT TRUE
         )
     """)
     cursor.execute("""
@@ -46,11 +47,11 @@ def init_db():
         )
     """)
     cursor.execute("""
-                   CREATE TABLE IF NOT EXISTS anonymous_messages (
-                       id INT AUTO_INCREMENT PRIMARY KEY,
-                       user_id BIGINT NOT NULL,
-                       message TEXT NOT NULL,
-                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+           CREATE TABLE IF NOT EXISTS anonymous_messages (
+                                                             id INT AUTO_INCREMENT PRIMARY KEY,
+                                                             user_id BIGINT NOT NULL,
+                                                             message TEXT NOT NULL,
+                                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
    """)
     conn.commit()

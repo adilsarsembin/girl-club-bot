@@ -1,5 +1,6 @@
 import os
 
+from aiogram import types
 from aiogram.filters import BaseFilter
 from dotenv import load_dotenv
 
@@ -14,8 +15,7 @@ class IsAdmin(BaseFilter):
     Custom filter to check if the user is an administrator.
     """
     def __init__(self):
-        admin_ids = ADMIN_IDS.copy()
-        self.admin_ids = admin_ids
+        self.admin_ids = ADMIN_IDS
 
-    async def __call__(self, user_id: int) -> bool:
-        return user_id in self.admin_ids
+    async def __call__(self, message: types.Message) -> bool:
+        return message.from_user.id in self.admin_ids
