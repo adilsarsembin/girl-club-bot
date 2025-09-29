@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from database.mysql import init_db as init_mysql_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
+from jobs import get_scheduler
 
 load_dotenv()
 
@@ -20,6 +21,8 @@ async def main():
 
     init_mysql_db()
     bot = Bot(token=api_token)
+    scheduler = get_scheduler()
+    scheduler.start()
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
     dp.include_routers(admin_router, user_router)

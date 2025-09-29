@@ -10,6 +10,7 @@ from database.events import add_event, deactivate_event, get_all_events
 from database.quotes import add_quote
 from database.users import get_all_user_ids_by_role
 from filters import IsAdmin
+from jobs import schedule_reminder
 from states.add_event import AddEventStates
 from states.add_quote import AddQuoteStates
 from states.send_all import SendAllStates
@@ -54,11 +55,13 @@ async def process_theme(message: Message, state: FSMContext):
 
 
 @router.message(StateFilter(AddEventStates.waiting_for_place))
-async def process_place(message: Message, state: FSMContext):
+async def process_place(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     place = message.text.strip()
-    if add_event(data['full_datetime'], data['theme'], place):
-        await message.reply(f"Event added: {data['full_datetime']} - {data['theme']} at {place}")
+    event_id = add_event(data['full_datetime'], data['theme'], place)
+    if event_id:
+        await schedule_reminder(bot, data['full_datetime'], event_id, data['theme'], place)
+        await message.reply(f"Event added & reminder scheduled: {data['full_datetime']} - {data['theme']} at {place}")
     else:
         await message.reply("Error adding event.")
 
@@ -109,9 +112,9 @@ async def cmd_deactivate_event(message: Message):
         await message.reply("No events.")
         return
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
-    for event_id, date, theme, place in events:
+    for event_id, planned_at, theme, place in events:
         keyboard.inline_keyboard.append([InlineKeyboardButton(
-            text=f"{date} - {theme}", callback_data=f"deact:{event_id}"
+            text=f"{planned_at} - {theme}", callback_data=f"deact:{event_id}"
         )])
     await message.reply("Select event to deactivate:", reply_markup=keyboard)
 

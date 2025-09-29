@@ -3,17 +3,18 @@ from datetime import datetime
 from database.mysql import get_connection
 
 
-def add_event(planned_at: str, theme: str, place: str) -> bool:
+def add_event(planned_at: str, theme: str, place: str) -> int:
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO events (planned_at, theme, place) VALUES (%s, %s, %s)", (planned_at, theme, place))
+        event_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        return True
+        return event_id
     except Exception as exception:
         print(exception)
-        return False
+        return 0
 
 
 def get_all_events() -> list[tuple]:
