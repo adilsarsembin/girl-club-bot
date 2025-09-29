@@ -5,7 +5,7 @@ def add_user(user_id: int, username: str, first_name: str, role: str) -> bool:
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("INSERT IGNORE INTO users (id, username, first_name) VALUES (%s, %s, %s, %s)",
+        cursor.execute("INSERT IGNORE INTO users (id, username, first_name, role) VALUES (%s, %s, %s, %s)",
                        (user_id, username, first_name, role))
         conn.commit()
         conn.close()
