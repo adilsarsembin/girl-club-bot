@@ -13,16 +13,16 @@ from states.anonymous import AnonymousStates
 router = Router()
 
 user_commands = [
-    types.BotCommand(command="start", description="Start bot"),
-    types.BotCommand(command="quote", description="Get random quote"),
-    types.BotCommand(command="anonymous_message", description="Send your anonymous message"),
-    types.BotCommand(command="events", description="Get upcoming events"),
+    types.BotCommand(command="start", description="Запустить бота"),
+    types.BotCommand(command="quote", description="Получить случайную цитату"),
+    types.BotCommand(command="anonymous_message", description="Отправить анонимное сообщение"),
+    types.BotCommand(command="events", description="Посмотреть предстоящие события"),
 ]
 admin_commands = user_commands + [
-    types.BotCommand(command="add_event", description="Add event"),
-    types.BotCommand(command="add_quote", description="Add quote"),
-    types.BotCommand(command="send_all", description="Send to all"),
-    types.BotCommand(command="deactivate_event", description="Deactivate event")
+    types.BotCommand(command="add_event", description="Добавить событие"),
+    types.BotCommand(command="add_quote", description="Добавить цитату"),
+    types.BotCommand(command="send_all", description="Отправить всем"),
+    types.BotCommand(command="deactivate_event", description="Деактивировать событие")
 ]
 
 @router.message(CommandStart())
@@ -30,7 +30,7 @@ async def send_welcome(message: types.Message, bot: Bot):
     """
     Handler for the /start command. This is for all users.
     """
-    await message.reply("Hi!\nWelcome to the GirlClub Bot! 💖")
+    await message.reply("Привет!\nДобро пожаловать в GirlClub Bot! 💖")
     admin_command = IsAdmin()
     is_admin = await admin_command(message)
     role = 'admin' if is_admin else 'user'
@@ -49,7 +49,7 @@ async def get_quote(message: types.Message):
 
 @router.message(Command("anonymous_message"))
 async def cmd_anon(message: Message, state: FSMContext):
-    await message.reply("Send your anonymous message:")
+    await message.reply("Отправьте ваше анонимное сообщение:")
     await state.set_state(AnonymousStates.waiting_for_message)
 
 
@@ -57,11 +57,11 @@ async def cmd_anon(message: Message, state: FSMContext):
 async def process_anon(message: Message, state: FSMContext, bot: Bot):
     text = message.text
     save_anon_message(message.from_user.id, text)
-    formatted = f"You have anonymous message: {text}"
+    formatted = f"У вас анонимное сообщение: {text}"
     admin_ids = get_all_user_ids_by_role('admin')
     for admin_id in admin_ids:
         await bot.send_message(admin_id, formatted)
-    await message.reply("Message sent anonymously!")
+    await message.reply("Сообщение отправлено анонимно!")
     await state.clear()
 
 
@@ -69,7 +69,7 @@ async def process_anon(message: Message, state: FSMContext, bot: Bot):
 async def get_events(message: Message):
     events = get_all_events()
     if not events:
-        await message.reply("No events yet.")
+        await message.reply("Событий пока нет.")
         return
     for _, planned_at, place, theme in events:
         formatted = f"📅 {planned_at}\n📍 {place}\n🎯 {theme}"

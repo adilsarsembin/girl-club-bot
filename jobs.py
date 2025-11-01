@@ -22,7 +22,7 @@ def get_scheduler() -> AsyncIOScheduler:
 
 async def send_event_reminder(bot: Bot, theme: str, place: str, event_time: str):
     user_ids = get_all_user_ids_by_role('user')
-    msg = f"Reminder: Tomorrow at {event_time} - {theme} at {place} 📅"
+    msg = f"Напоминание: Завтра в {event_time} - {theme} в {place} 📅"
     for uid in user_ids:
         try:
             await bot.send_message(uid, msg)

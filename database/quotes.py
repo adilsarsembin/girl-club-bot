@@ -20,4 +20,4 @@ def get_random_quote() -> str:
     cursor.execute("SELECT text FROM quotes ORDER BY RAND() LIMIT 1")
     result = cursor.fetchone()
     conn.close()
-    return result[0] if result else "No quotes yet."
+    return result[0] if result else "Цитат пока нет."
