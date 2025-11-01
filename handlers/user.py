@@ -14,6 +14,7 @@ router = Router()
 
 user_commands = [
     types.BotCommand(command="start", description="Запустить бота"),
+    types.BotCommand(command="help", description="Показать доступные команды"),
     types.BotCommand(command="quote", description="Получить случайную цитату"),
     types.BotCommand(command="anonymous_message", description="Отправить анонимное сообщение"),
     types.BotCommand(command="events", description="Посмотреть предстоящие события"),
@@ -39,6 +40,37 @@ async def send_welcome(message: types.Message, bot: Bot):
         await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
     else:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
+
+
+@router.message(Command("help"))
+async def send_help(message: types.Message, bot: Bot):
+    """
+    Handler for the /help command. Shows available commands based on user role.
+    """
+    admin_command = IsAdmin()
+    is_admin = await admin_command(message)
+
+    help_text = "🤖 <b>GirlClub Bot - Доступные команды:</b>\n\n"
+
+    if is_admin:
+        help_text += "👤 <b>Пользовательские команды:</b>\n"
+        for cmd in user_commands:
+            if cmd.command != "help":  # Skip help command in list
+                help_text += f"/{cmd.command} - {cmd.description}\n"
+
+        help_text += "\n👑 <b>Администраторские команды:</b>\n"
+        for cmd in admin_commands[len(user_commands):]:  # Get only admin-specific commands
+            help_text += f"/{cmd.command} - {cmd.description}\n"
+
+        help_text += "\n💡 <i>Используйте команды для управления клубом!</i>"
+    else:
+        help_text += "👤 <b>Доступные команды:</b>\n"
+        for cmd in user_commands:
+            help_text += f"/{cmd.command} - {cmd.description}\n"
+
+        help_text += "\n💡 <i>Наслаждайтесь использованием бота!</i>"
+
+    await message.reply(help_text, parse_mode="HTML")
 
 
 @router.message(Command("quote"))
