@@ -38,6 +38,17 @@ def init_db():
         )
     """)
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS photos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            file_id VARCHAR(255) NOT NULL,
+            file_unique_id VARCHAR(255) NOT NULL,
+            filename VARCHAR(255),
+            caption TEXT,
+            uploaded_by BIGINT,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGINT PRIMARY KEY,
             username VARCHAR(255),

@@ -18,9 +18,18 @@ async def main():
     """The main function to start the bot."""
     api_token = os.getenv("TELEGRAM_API_TOKEN")
     if not api_token:
-        raise ValueError("API_TOKEN not found in environment variables")
+        raise ValueError("TELEGRAM_API_TOKEN not found in environment variables")
 
-    session = AiohttpSession(proxy='http://proxy.server:3128')
+    # Use proxy only if PROXY_URL is set (for production like PythonAnywhere)
+    # For local testing, leave PROXY_URL empty or don't set it
+    proxy_url = os.getenv("PROXY_URL")
+    if proxy_url:
+        session = AiohttpSession(proxy=proxy_url)
+        print(f"Using proxy: {proxy_url}")
+    else:
+        session = AiohttpSession()
+        print("Running without proxy (local mode)")
+
     bot = Bot(token=api_token, session=session)
     scheduler = get_scheduler()
     scheduler.start()

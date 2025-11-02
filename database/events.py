@@ -27,14 +27,17 @@ def get_all_events() -> list[tuple]:
     return events
 
 
-def deactivate_event(event_id: int) -> bool:
+def delete_event(event_id: int) -> bool:
+    """
+    Delete an event by its ID.
+    """
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE events SET is_active = FALSE WHERE id = %s", (event_id,))
+        cursor.execute("DELETE FROM events WHERE id = %s", (event_id,))
         conn.commit()
         conn.close()
-        return True
+        return cursor.rowcount > 0  # Returns True if at least one row was deleted
     except Exception as exception:
         print(exception)
         return False
