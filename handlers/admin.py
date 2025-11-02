@@ -1,6 +1,9 @@
-from datetime import date, timedelta, datetime
+from datetime import date, datetime, timedelta
 
 from aiogram import Router, Bot, F
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -79,9 +82,14 @@ async def cmd_add_quote(message: Message, state: FSMContext):
 @router.message(AddQuoteStates.waiting_for_quote)
 async def process_quote(message: Message, state: FSMContext):
     text = message.text.strip()
+    admin_id = message.from_user.id
+    admin_username = message.from_user.username or "no_username"
+
     if add_quote(text):
+        logger.info(f"Admin {admin_id} (@{admin_username}) added quote")
         await message.reply("💖 <b>Прекрасная цитата добавлена!</b>\n\n✨ Теперь она будет вдохновлять участниц клуба!\n\n🌸 Спасибо за твою заботу! 💕", parse_mode="HTML")
     else:
+        logger.error(f"Failed to add quote for admin {admin_id}")
         await message.reply("💔 <b>Ой, что-то пошло не так</b>\n\n❌ Не удалось добавить цитату. Попробуй еще раз 💕", parse_mode="HTML")
     await state.clear()
 
@@ -222,11 +230,17 @@ async def process_caption(message: Message, state: FSMContext):
         caption=caption,
         uploaded_by=message.from_user.id
     ):
+        admin_id = message.from_user.id
+        admin_username = message.from_user.username or "no_username"
+
         if caption:
+            logger.info(f"Admin {admin_id} (@{admin_username}) added photo with caption")
             await message.reply("🌟 <b>Чудесная фотография добавлена!</b>\n\n💖 С таким красивым описанием она точно вдохновит участниц!\n\n✨ Спасибо за твою заботу! 💕", parse_mode="HTML")
         else:
+            logger.info(f"Admin {admin_id} (@{admin_username}) added photo without caption")
             await message.reply("🌸 <b>Прекрасная фотография добавлена!</b>\n\n💕 Она будет радовать участниц клуба!\n\n✨ Спасибо за твою заботу! 💖", parse_mode="HTML")
     else:
+        logger.error(f"Failed to add photo for admin {message.from_user.id}")
         await message.reply("💔 <b>Ой, что-то пошло не так</b>\n\n❌ Не удалось добавить фотографию. Попробуй еще раз 💕", parse_mode="HTML")
 
     await state.clear()
@@ -338,23 +352,286 @@ async def process_delete_photo(callback: CallbackQuery):
     await callback.answer()
 
 
+# === NEW MANAGEMENT INTERFACE ===
+
+@router.message(Command("manage_quotes"), IsAdmin())
+async def cmd_manage_quotes(message: Message):
+    """
+    Handler for the /manage_quotes command. Shows quote management options.
+    """
+    admin_id = message.from_user.id
+    admin_username = message.from_user.username or "no_username"
+
+    logger.info(f"Admin {admin_id} (@{admin_username}) opened quotes management")
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✨ Добавить цитату", callback_data="quotes:add")],
+        [InlineKeyboardButton(text="📝 Показать все цитаты", callback_data="quotes:list")],
+        [InlineKeyboardButton(text="🗑️ Удалить цитату", callback_data="quotes:delete")]
+    ])
+
+    await message.reply(
+        "💭 <b>Управление цитатами мудрости</b>\n\n💕 Выбери, что хочешь сделать с цитатами клуба ✨",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+
+@router.message(Command("manage_photos"), IsAdmin())
+async def cmd_manage_photos(message: Message):
+    """
+    Handler for the /manage_photos command. Shows photo management options.
+    """
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📸 Добавить фотографию", callback_data="photos:add")],
+        [InlineKeyboardButton(text="🖼️ Показать все фотографии", callback_data="photos:list")],
+        [InlineKeyboardButton(text="🗑️ Удалить фотографию", callback_data="photos:delete")]
+    ])
+
+    await message.reply(
+        "🌟 <b>Управление вдохновляющими фотографиями</b>\n\n💕 Выбери, что хочешь сделать с фото коллекцией ✨",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+
+@router.message(Command("manage_events"), IsAdmin())
+async def cmd_manage_events(message: Message):
+    """
+    Handler for the /manage_events command. Shows event management options.
+    """
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎉 Создать событие", callback_data="events:add")],
+        [InlineKeyboardButton(text="📅 Показать все события", callback_data="events:list")],
+        [InlineKeyboardButton(text="🗑️ Удалить событие", callback_data="events:delete")]
+    ])
+
+    await message.reply(
+        "🎊 <b>Управление событиями клуба</b>\n\n💕 Выбери, что хочешь сделать с расписанием мероприятий ✨",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(F.data.startswith("quotes:"))
+async def process_quotes_management(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for quotes management actions.
+    """
+    admin_id = callback.from_user.id
+    admin_username = callback.from_user.username or "no_username"
+    action = callback.data.split(":")[1]
+
+    logger.info(f"Admin {admin_id} (@{admin_username}) selected quotes action: {action}")
+
+    if action == "add":
+        await callback.message.edit_text("💭 <b>Какая мудрая цитата тебя вдохновила?</b>\n\n✨ Поделись ею с участницами клуба! 💕", parse_mode="HTML")
+        await state.set_state(AddQuoteStates.waiting_for_quote)
+
+    elif action == "list":
+        quotes = get_all_quotes()
+        if not quotes:
+            await callback.message.edit_text("📝 <b>Цитат пока нет в базе данных</b>\n\n💕 Но скоро появятся прекрасные мудрые слова! ✨", parse_mode="HTML")
+            return
+
+        response = "📝 <b>Все цитаты в базе данных:</b>\n\n"
+        for quote_id, text, created_at in quotes:
+            if text and len(text) > 50:
+                display_name = f"💭 {text[:50]}..."
+            elif text:
+                display_name = f"💭 {text}"
+            else:
+                display_name = "💭 Без текста"
+
+            response += f"🆔 <b>{quote_id}</b>\n{display_name}\n📅 {created_at}\n\n"
+
+        if len(response) > 4000:
+            await callback.message.edit_text("📝 <b>Слишком много цитат для отображения</b>\n\n💕 Используй индивидуальные команды для управления! ✨", parse_mode="HTML")
+        else:
+            await callback.message.edit_text(response, parse_mode="HTML")
+
+    elif action == "delete":
+        quotes = get_all_quotes()
+        if not quotes:
+            await callback.message.edit_text("📝 <b>Цитат для удаления нет</b>\n\n💕 Все цитаты в безопасности! 🌸", parse_mode="HTML")
+            return
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for quote_id, text, created_at in quotes:
+            if text and len(text) > 50:
+                display_name = text[:50] + "..."
+            elif text:
+                display_name = text
+            else:
+                display_name = "Без текста"
+
+            keyboard.inline_keyboard.append([InlineKeyboardButton(
+                text=f"🆔{quote_id}: {display_name}", callback_data=f"del_quote:{quote_id}"
+            )])
+
+        await callback.message.edit_text("🗑️ <b>Выберите цитату для удаления:</b>", reply_markup=keyboard, parse_mode="HTML")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("photos:"))
+async def process_photos_management(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for photos management actions.
+    """
+    action = callback.data.split(":")[1]
+
+    if action == "add":
+        await callback.message.edit_text("🌟 <b>Давай добавим вдохновляющую фотографию!</b>\n\n📸 Отправь красивую картинку, которая поднимет настроение участницам клуба 💕", parse_mode="HTML")
+        await state.set_state(AddPhotoStates.waiting_for_photo)
+
+    elif action == "list":
+        photos = get_all_photos()
+        if not photos:
+            await callback.message.edit_text("📸 <b>Коллекция фотографий пока пустая</b>\n\n💕 Но скоро здесь появятся прекрасные вдохновляющие картинки! 🌟", parse_mode="HTML")
+            return
+
+        response = "📸 <b>Все фотографии в базе данных:</b>\n\n"
+        for photo_id, file_id, filename, caption, uploaded_at in photos:
+            if caption and caption.strip():
+                display_name = f"📝 {caption.strip()[:40]}..." if len(caption.strip()) > 40 else f"📝 {caption.strip()}"
+            elif filename:
+                display_name = f"📄 {filename[:40]}..." if len(filename) > 40 else f"📄 {filename}"
+            else:
+                upload_date = str(uploaded_at).split()[0]
+                display_name = f"📸 Фото от {upload_date}"
+
+            response += f"🆔 <b>{photo_id}</b>\n{display_name}\n📅 {uploaded_at}\n\n"
+
+        if len(response) > 4000:
+            await callback.message.edit_text("📸 <b>Слишком много фотографий для отображения</b>\n\n💕 Используй индивидуальные команды для управления! ✨", parse_mode="HTML")
+        else:
+            await callback.message.edit_text(response, parse_mode="HTML")
+
+    elif action == "delete":
+        photos = get_all_photos()
+        if not photos:
+            await callback.message.edit_text("📸 <b>Все фотографии в безопасности!</b>\n\n💕 Пока нет фотографий для удаления 🌸", parse_mode="HTML")
+            return
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for photo_id, file_id, filename, caption, uploaded_at in photos:
+            if caption and caption.strip():
+                display_name = caption.strip()[:35] + "..." if len(caption.strip()) > 35 else caption.strip()
+            elif filename:
+                display_name = filename[:35] + "..." if len(filename) > 35 else filename
+            else:
+                upload_date = str(uploaded_at).split()[0]
+                display_name = f"Фото от {upload_date}"
+
+            keyboard.inline_keyboard.append([InlineKeyboardButton(
+                text=f"🆔{photo_id}: {display_name}", callback_data=f"del_photo:{photo_id}"
+            )])
+
+        await callback.message.edit_text("🗑️ <b>Выберите фотографию для удаления:</b>", reply_markup=keyboard, parse_mode="HTML")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("events:"))
+async def process_events_management(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for events management actions.
+    """
+    action = callback.data.split(":")[1]
+
+    if action == "add":
+        markup = await SimpleCalendar().start_calendar()
+        await callback.message.edit_text("📅 <b>Давай создадим чудесное событие!</b>\n\nВыбери дату, когда соберемся вместе 💕", reply_markup=markup, parse_mode="HTML")
+        # Note: This will trigger the calendar callback, so we don't need to set state here
+
+    elif action == "list":
+        events = get_all_events()
+        if not events:
+            await callback.message.edit_text("📅 <b>Событий пока нет в расписании</b>\n\n💕 Но скоро появятся интересные мероприятия! 🌟", parse_mode="HTML")
+            return
+
+        response = "🎊 <b>Все события в расписании:</b>\n\n"
+        for event_id, planned_at, theme, place in events:
+            # planned_at is already a datetime object from MySQL
+            if isinstance(planned_at, datetime):
+                formatted_date = planned_at.strftime('%d.%m.%Y в %H:%M')
+            else:
+                # Fallback for string format
+                try:
+                    event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
+                    formatted_date = event_dt.strftime('%d.%m.%Y в %H:%M')
+                except:
+                    formatted_date = str(planned_at)
+
+            response += f"🆔 <b>{event_id}</b>\n🎉 {theme}\n📅 {formatted_date}\n📍 {place}\n\n"
+
+        if len(response) > 4000:
+            await callback.message.edit_text("🎊 <b>Слишком много событий для отображения</b>\n\n💕 Используй индивидуальные команды для управления! ✨", parse_mode="HTML")
+        else:
+            await callback.message.edit_text(response, parse_mode="HTML")
+
+    elif action == "delete":
+        events = get_all_events()
+        if not events:
+            await callback.message.edit_text("📅 <b>Все события в расписании!</b>\n\n💕 Пока нет событий для удаления 🌸", parse_mode="HTML")
+            return
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for event_id, planned_at, theme, place in events:
+            # planned_at is already a datetime object from MySQL
+            if isinstance(planned_at, datetime):
+                display_date = planned_at.strftime('%d.%m %H:%M')
+            else:
+                # Fallback for string format
+                try:
+                    event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
+                    display_date = event_dt.strftime('%d.%m %H:%M')
+                except:
+                    display_date = str(planned_at).split()[0] if ' ' in str(planned_at) else str(planned_at)
+
+            keyboard.inline_keyboard.append([InlineKeyboardButton(
+                text=f"{display_date} - {theme[:30]}...", callback_data=f"del_event:{event_id}"
+            )])
+
+        await callback.message.edit_text("🗑️ <b>Выбери событие для удаления:</b>\n\n💕 Выбери то, которое нужно отменить 🌸", reply_markup=keyboard, parse_mode="HTML")
+
+    await callback.answer()
+
+
 @router.message(Command("send_all"), IsAdmin())
 async def cmd_send_all(message: Message, state: FSMContext, bot: Bot):
+    admin_id = message.from_user.id
+    admin_username = message.from_user.username or "no_username"
+
+    logger.info(f"Admin {admin_id} (@{admin_username}) initiated broadcast message")
+
     await message.reply("💌 <b>Сообщение для всех участниц</b>\n\n✨ Напиши что-то теплое и вдохновляющее для нашего клуба! 💕\n\nВсе получат твое послание с любовью! 🌸", parse_mode="HTML")
     await state.set_state(SendAllStates.waiting_for_message)
 
 
 @router.message(SendAllStates.waiting_for_message)
 async def process_send_all(message: Message, state: FSMContext, bot: Bot):
+    admin_id = message.from_user.id
+    admin_username = message.from_user.username or "no_username"
     text = message.text
+
+    logger.info(f"Admin {admin_id} (@{admin_username}) sending broadcast message")
+
     user_ids = get_all_user_ids_by_role('user')
     sent_count = 0
+    failed_count = 0
+
     for user_id in user_ids:
         try:
             await bot.send_message(user_id, text)
             sent_count += 1
-        except Exception:
-            pass
+        except Exception as e:
+            failed_count += 1
+            logger.warning(f"Failed to send broadcast to user {user_id}: {e}")
+
+    logger.info(f"Broadcast completed: {sent_count} successful, {failed_count} failed, total users: {len(user_ids)}")
+
     await message.reply(f"💌 <b>Сообщение отправлено!</b>\n\n✨ Дошло до {sent_count} из {len(user_ids)} участниц\n\n💕 Спасибо, что заботишься о нашем клубе! 🌸", parse_mode="HTML")
     await state.clear()
 

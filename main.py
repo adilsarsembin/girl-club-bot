@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 
 from aiogram import Bot, Dispatcher
@@ -11,13 +10,20 @@ from database.mysql import init_db as init_mysql_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 from jobs import get_scheduler
+from logging_config import setup_logging_from_env, get_logger
 
 load_dotenv()
 
+# Initialize logging from configuration
+logger = setup_logging_from_env()
+
 async def main():
     """The main function to start the bot."""
+    logger.info("=== GirlClub Bot Starting Up ===")
+
     api_token = os.getenv("TELEGRAM_API_TOKEN")
     if not api_token:
+        logger.error("TELEGRAM_API_TOKEN not found in environment variables")
         raise ValueError("TELEGRAM_API_TOKEN not found in environment variables")
 
     # Use proxy only if PROXY_URL is set (for production like PythonAnywhere)
@@ -25,21 +31,41 @@ async def main():
     proxy_url = os.getenv("PROXY_URL")
     if proxy_url:
         session = AiohttpSession(proxy=proxy_url)
-        print(f"Using proxy: {proxy_url}")
+        logger.info(f"Using proxy: {proxy_url}")
     else:
         session = AiohttpSession()
-        print("Running without proxy (local mode)")
+        logger.info("Running without proxy (local mode)")
 
     bot = Bot(token=api_token, session=session)
+    logger.info("Bot instance created successfully")
+
     scheduler = get_scheduler()
     scheduler.start()
+    logger.info("Scheduler started")
+
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
-    init_mysql_db()
+    logger.info("Dispatcher created with memory storage")
+
+    try:
+        init_mysql_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+
     dp.include_routers(admin_router, user_router)
-    await dp.start_polling(bot)
+    logger.info("Routers registered successfully")
+
+    logger.info("Starting polling...")
+    try:
+        await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"Error during polling: {e}")
+        raise
+    finally:
+        logger.info("Bot stopped")
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
