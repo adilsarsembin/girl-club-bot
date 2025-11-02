@@ -1,0 +1,27 @@
+# Copy this file to .env and fill in your values
+# Telegram Bot Configuration
+TELEGRAM_API_TOKEN=your_bot_token_from_botfather
+
+# Database Configuration
+DB_HOST=localhost
+DB_NAME=girl_club_bot
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+
+# Admin Configuration (comma-separated Telegram user IDs)
+# Get your user ID from @userinfobot
+ADMIN_IDS=123456789,987654321
+
+# Proxy Configuration (leave empty for local development)
+# For PythonAnywhere/production, set your proxy URL
+PROXY_URL=
+
+# Logging Configuration
+# Available presets: development/production/minimal
+LOG_PRESET=production
+
+# Optional: Override specific logging settings
+# LOG_FILE=girl_club_bot.log
+# LOG_LEVEL=INFO
+# LOG_MAX_BYTES=5242880
+# LOG_BACKUP_COUNT=2
