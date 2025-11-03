@@ -221,7 +221,6 @@ async def get_events(message: Message):
         else:
             # Fallback for string format
             try:
-                from datetime import datetime
                 event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
                 formatted_date = event_dt.strftime('%d.%m.%Y в %H:%M')
             except:
