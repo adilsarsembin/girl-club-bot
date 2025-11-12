@@ -5,7 +5,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BotCommandScopeChat, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
-from database.anonymous import save_anon_message
+from database.anonymous import add_anonymous_message
 from database.events import get_all_events
 from database.photos import get_random_photo
 from database.quotes import get_random_quote
@@ -182,7 +182,7 @@ async def process_anon(message: Message, state: FSMContext, bot: Bot):
 
     logger.info(f"User {user_id} (@{username}) sent anonymous message")
 
-    if save_anon_message(user_id, text):
+    if add_anonymous_message(user_id, text):
         logger.info(f"Anonymous message saved from user {user_id}")
     else:
         logger.error(f"Failed to save anonymous message from user {user_id}")
