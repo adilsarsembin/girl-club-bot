@@ -12,7 +12,13 @@ def add_photo(file_id: str, file_unique_id: str, filename: str = None, caption: 
             INSERT INTO photos (file_id, file_unique_id, filename, caption, uploaded_by)
             VALUES (%s, %s, %s, %s, %s) RETURNING id
         """, (file_id, file_unique_id, filename, caption, uploaded_by))
-        photo_id = cursor.fetchone()['id']
+        result = cursor.fetchone()
+        if result and 'id' in result:
+            photo_id = result['id']
+        else:
+            # Fallback: get the last inserted ID
+            cursor.execute("SELECT LASTVAL()")
+            photo_id = cursor.fetchone()[0]
         conn.commit()
         cursor.close()
         conn.close()

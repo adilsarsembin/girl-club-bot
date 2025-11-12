@@ -188,22 +188,33 @@ async def process_photo_upload(message: Message, state: FSMContext):
     """
     Handler for processing photo upload.
     """
-    if not message.photo:
-        await message.reply("📸 <b>Мне нужна фотография!</b>\n\n💕 Отправь картинку, которую хочешь добавить в коллекцию ✨", parse_mode="HTML")
-        return
+    try:
+        if not message.photo:
+            await message.reply("📸 <b>Мне нужна фотография!</b>\n\n💕 Отправь картинку, которую хочешь добавить в коллекцию ✨", parse_mode="HTML")
+            return
 
-    # Get the largest photo size (best quality)
-    photo = message.photo[-1]
+        # Get the largest photo size (best quality)
+        photo = message.photo[-1]
 
-    # Store photo info temporarily in state
-    await state.update_data(
-        file_id=photo.file_id,
-        file_unique_id=photo.file_unique_id,
-        filename=getattr(message.document, 'filename', None) if message.document else None
-    )
+        # Validate photo data
+        if not photo.file_id or not photo.file_unique_id:
+            await message.reply("💔 <b>Ошибка обработки фото</b>\n\n❌ Попробуй отправить фотографию еще раз 💕", parse_mode="HTML")
+            return
 
-    await message.reply("📝 <b>Хочешь добавить нежное описание к фото?</b>\n\n💭 Расскажи, что вдохновляет в этой картинке!\n\n✨ Или нажми /skip, если описание не нужно 💕", parse_mode="HTML")
-    await state.set_state(AddPhotoStates.waiting_for_caption)
+        # Store photo info temporarily in state
+        await state.update_data(
+            file_id=photo.file_id,
+            file_unique_id=photo.file_unique_id,
+            filename=None  # Photos don't have filenames, only documents do
+        )
+
+        await message.reply("📝 <b>Хочешь добавить нежное описание к фото?</b>\n\n💭 Расскажи, что вдохновляет в этой картинке!\n\n✨ Или нажми /skip, если описание не нужно 💕", parse_mode="HTML")
+        await state.set_state(AddPhotoStates.waiting_for_caption)
+
+    except Exception as e:
+        logger.error(f"Error in photo upload: {e}")
+        await message.reply("💔 <b>Произошла ошибка при обработке фото</b>\n\n❌ Попробуй еще раз или обратись к администратору 💕", parse_mode="HTML")
+        await state.clear()
 
 
 @router.message(AddPhotoStates.waiting_for_caption)
@@ -211,39 +222,55 @@ async def process_caption(message: Message, state: FSMContext):
     """
     Handler for processing photo caption.
     """
-    data = await state.get_data()
-    caption = None
+    try:
+        data = await state.get_data()
 
-    if message.text and not message.text.startswith('/'):
-        caption = message.text.strip()
-    elif message.text == "/skip":
+        # Validate that we have photo data
+        if not data or 'file_id' not in data:
+            await message.reply("💔 <b>Ошибка сессии</b>\n\n❌ Данные фото не найдены. Начни заново с /add_photo 💕", parse_mode="HTML")
+            await state.clear()
+            return
+
         caption = None
-    else:
-        await message.reply("💭 <b>Расскажи о фото или пропусти</b>\n\n✨ Отправь текст описания или нажми /skip 💕", parse_mode="HTML")
-        return
 
-    # Add photo with or without caption
-    if add_photo(
-        file_id=data['file_id'],
-        file_unique_id=data['file_unique_id'],
-        filename=data.get('filename'),
-        caption=caption,
-        uploaded_by=message.from_user.id
-    ):
-        admin_id = message.from_user.id
-        admin_username = message.from_user.username or "no_username"
-
-        if caption:
-            logger.info(f"Admin {admin_id} (@{admin_username}) added photo with caption")
-            await message.reply("🌟 <b>Чудесная фотография добавлена!</b>\n\n💖 С таким красивым описанием она точно вдохновит участниц!\n\n✨ Спасибо за твою заботу! 💕", parse_mode="HTML")
+        if message.text and not message.text.startswith('/'):
+            caption = message.text.strip()
+        elif message.text == "/skip":
+            caption = None
         else:
-            logger.info(f"Admin {admin_id} (@{admin_username}) added photo without caption")
-            await message.reply("🌸 <b>Прекрасная фотография добавлена!</b>\n\n💕 Она будет радовать участниц клуба!\n\n✨ Спасибо за твою заботу! 💖", parse_mode="HTML")
-    else:
-        logger.error(f"Failed to add photo for admin {message.from_user.id}")
-        await message.reply("💔 <b>Ой, что-то пошло не так</b>\n\n❌ Не удалось добавить фотографию. Попробуй еще раз 💕", parse_mode="HTML")
+            await message.reply("💭 <b>Расскажи о фото или пропусти</b>\n\n✨ Отправь текст описания или нажми /skip 💕", parse_mode="HTML")
+            return
 
-    await state.clear()
+        # Add photo with or without caption
+        photo_result = add_photo(
+            file_id=data['file_id'],
+            file_unique_id=data['file_unique_id'],
+            filename=data.get('filename'),
+            caption=caption,
+            uploaded_by=message.from_user.id
+        )
+
+        if photo_result and photo_result > 0:
+            admin_id = message.from_user.id
+            admin_username = message.from_user.username or "no_username"
+
+            if caption:
+                logger.info(f"Admin {admin_id} (@{admin_username}) added photo with caption")
+                await message.reply("🌟 <b>Чудесная фотография добавлена!</b>\n\n💖 С таким красивым описанием она точно вдохновит участниц!\n\n✨ Спасибо за твою заботу! 💕", parse_mode="HTML")
+            else:
+                logger.info(f"Admin {admin_id} (@{admin_username}) added photo without caption")
+                await message.reply("🌸 <b>Прекрасная фотография добавлена!</b>\n\n💕 Она будет радовать участниц клуба!\n\n✨ Спасибо за твою заботу! 💖", parse_mode="HTML")
+        else:
+            logger.error(f"Failed to add photo for admin {message.from_user.id} - add_photo returned: {photo_result}")
+            await message.reply("💔 <b>Не удалось сохранить фото</b>\n\n❌ Проверь подключение к базе данных и попробуй еще раз 💕", parse_mode="HTML")
+            return
+
+        await state.clear()
+
+    except Exception as e:
+        logger.error(f"Error in caption processing: {e}")
+        await message.reply("💔 <b>Произошла ошибка</b>\n\n❌ Попробуй начать заново с /add_photo 💕", parse_mode="HTML")
+        await state.clear()
 
 
 @router.message(Command("list_photos"), IsAdmin())
@@ -258,7 +285,6 @@ async def cmd_list_photos(message: Message):
 
     response = "📸 <b>Все фотографии в базе данных:</b>\n\n"
     for photo_id, file_id, filename, caption, uploaded_at in photos:
-        # Create a meaningful display name
         if caption and caption.strip():
             display_name = f"📝 {caption.strip()[:40]}..." if len(caption.strip()) > 40 else f"📝 {caption.strip()}"
         elif filename:

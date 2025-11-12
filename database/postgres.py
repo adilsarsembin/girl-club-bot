@@ -43,17 +43,45 @@ def init_db():
         )
     """)
 
+    # Check if photos table exists and has correct structure
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS photos (
-            id SERIAL PRIMARY KEY,
-            file_id VARCHAR(255) NOT NULL,
-            file_unique_id VARCHAR(255) NOT NULL,
-            filename VARCHAR(255),
-            caption TEXT,
-            uploaded_by BIGINT,
-            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_name = 'photos'
         )
     """)
+    table_exists = cursor.fetchone()[0]
+
+    if not table_exists:
+        cursor.execute("""
+            CREATE TABLE photos (
+                id SERIAL PRIMARY KEY,
+                file_id VARCHAR(255) NOT NULL,
+                file_unique_id VARCHAR(255) NOT NULL,
+                filename VARCHAR(255),
+                caption TEXT,
+                uploaded_by BIGINT,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Add explicit index for better performance
+        cursor.execute("""
+            CREATE INDEX idx_photos_uploaded_at ON photos(uploaded_at DESC)
+        """)
+        cursor.execute("""
+            CREATE INDEX idx_photos_file_id ON photos(file_id)
+        """)
+    else:
+        # Ensure required columns exist (for migration compatibility)
+        cursor.execute("""
+            ALTER TABLE photos
+            ADD COLUMN IF NOT EXISTS file_unique_id VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS filename VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS caption TEXT,
+            ADD COLUMN IF NOT EXISTS uploaded_by BIGINT,
+            ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
