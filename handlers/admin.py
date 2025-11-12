@@ -19,7 +19,6 @@ from states.add_event import AddEventStates
 from states.add_photo import AddPhotoStates
 from states.add_quote import AddQuoteStates
 from states.send_all import SendAllStates
-from handlers.user import send_main_menu, is_admin_user
 
 router = Router()
 
@@ -70,6 +69,7 @@ async def process_place(message: Message, state: FSMContext, bot: Bot):
         await message.reply(f"🎉 <b>Ура! Событие создано!</b>\n\n📅 {data['full_datetime']}\n🎯 {data['theme']}\n📍 {place}\n\n💕 Все участницы получат напоминание за 24 часа!\n\n✨ Спасибо, что делаешь наш клуб таким замечательным!", parse_mode="HTML")
 
         # Return to main menu after successful event creation
+        from handlers.user import is_admin_user, send_main_menu
         is_admin = await is_admin_user(message)
         await send_main_menu(message, is_admin)
     else:
@@ -96,6 +96,7 @@ async def process_quote(message: Message, state: FSMContext):
         await message.reply("💖 <b>Прекрасная цитата добавлена!</b>\n\n✨ Теперь она будет вдохновлять участниц клуба!\n\n🌸 Спасибо за твою заботу! 💕", parse_mode="HTML")
 
         # Return to main menu after successful quote addition
+        from handlers.user import is_admin_user, send_main_menu
         is_admin = await is_admin_user(message)
         await send_main_menu(message, is_admin)
     else:
@@ -182,6 +183,7 @@ async def process_delete_quote(callback: CallbackQuery):
         await callback.message.edit_text(f"✅ Цитата успешно удалена!\n\n💬 Текст: {truncated_text}")
 
         # Return to main menu after successful deletion
+        from handlers.user import is_admin_user, send_main_menu
         is_admin = await is_admin_user(callback)
         await send_main_menu(callback.message, is_admin)
     else:
@@ -307,6 +309,7 @@ async def process_caption(message: Message, state: FSMContext):
                 await message.reply("🌸 <b>Прекрасная фотография добавлена!</b>\n\n💕 Она будет радовать участниц клуба!\n\n✨ Спасибо за твою заботу! 💖", parse_mode="HTML")
 
             # Return to main menu after successful photo addition
+            from handlers.user import is_admin_user, send_main_menu
             is_admin = await is_admin_user(message)
             await send_main_menu(message, is_admin)
             await state.clear()
@@ -418,6 +421,7 @@ async def process_delete_photo(callback: CallbackQuery):
         await callback.message.edit_text(f"✅ Фотография удалена!\n\n📸 {filename_display}")
 
         # Return to main menu after successful deletion
+        from handlers.user import is_admin_user, send_main_menu
         is_admin = await is_admin_user(callback)
         await send_main_menu(callback.message, is_admin)
     else:
@@ -732,6 +736,7 @@ async def process_delete_event(callback: CallbackQuery):
         await callback.message.edit_text("✅ <b>Событие отменено</b>\n\n💕 Участницы будут оповещены об изменениях 🌸", parse_mode="HTML")
 
         # Return to main menu after successful deletion
+        from handlers.user import is_admin_user, send_main_menu
         is_admin = await is_admin_user(callback)
         await send_main_menu(callback.message, is_admin)
     else:
