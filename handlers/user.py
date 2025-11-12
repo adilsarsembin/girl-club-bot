@@ -47,19 +47,13 @@ def build_main_menu(is_admin: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="ℹ️ Помощь", callback_data="menu:help")],
     ]
     if is_admin:
-        keyboard.append([InlineKeyboardButton(text="👑 Админ-панель", callback_data="menu:admin")])
+        keyboard.extend([
+            [InlineKeyboardButton(text="💭 Управление цитатами", callback_data="menu_admin:quotes")],
+            [InlineKeyboardButton(text="📸 Управление фотографиями", callback_data="menu_admin:photos")],
+            [InlineKeyboardButton(text="🎉 Управление событиями", callback_data="menu_admin:events")],
+            [InlineKeyboardButton(text="📢 Рассылка участницам", callback_data="menu_admin:broadcast")],
+        ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-
-def build_admin_menu() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="💭 Цитаты", callback_data="admin:quotes")],
-            [InlineKeyboardButton(text="📸 Фото", callback_data="admin:photos")],
-            [InlineKeyboardButton(text="🎉 События", callback_data="admin:events")],
-            [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin:broadcast")],
-        ]
-    )
 
 
 async def send_main_menu(message: Message, is_admin: bool) -> None:
@@ -72,6 +66,21 @@ async def send_main_menu(message: Message, is_admin: bool) -> None:
         reply_markup=build_main_menu(is_admin),
         parse_mode="HTML"
     )
+
+
+def append_back_button(keyboard: InlineKeyboardMarkup, target: str = "back_to_main") -> InlineKeyboardMarkup:
+    keyboard.inline_keyboard.append(
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"menu:{target}")]
+    )
+    return keyboard
+
+
+async def is_admin_user(message: Message) -> bool:
+    admin_filter = IsAdmin()
+    try:
+        return await admin_filter(message)
+    except Exception:
+        return False
 
 @router.message(CommandStart())
 async def send_welcome(message: types.Message, bot: Bot):
@@ -159,6 +168,7 @@ async def cmd_motivation(message: Message):
         [InlineKeyboardButton(text="💭 Цитата мудрости", callback_data="motivation:quote")],
         [InlineKeyboardButton(text="📸 Вдохновляющая фотография", callback_data="motivation:photo")]
     ])
+    append_back_button(keyboard)
 
     await message.reply(
         "🌟 <b>Что тебя вдохновит сегодня?</b>\n\n💕 Выбери, что хочешь получить: мудрую цитату или красивую фотографию ✨",
@@ -201,6 +211,9 @@ async def process_motivation_choice(callback: CallbackQuery):
                 "🌸 <b>Милая, фотографии скоро появятся!</b>\n\n📸 Пока администраторы готовят вдохновляющие картинки для тебя 💖",
                 parse_mode="HTML"
             )
+            is_admin = await is_admin_user(callback.message)
+            await send_main_menu(callback.message, is_admin)
+            await callback.answer()
             return
 
         logger.debug(f"Sent photo {photo['id']} to user {user_id}")
@@ -216,12 +229,23 @@ async def process_motivation_choice(callback: CallbackQuery):
             parse_mode="HTML"
         )
 
+    is_admin = await is_admin_user(callback.message)
+    await send_main_menu(callback.message, is_admin)
     await callback.answer()
 
 
 @router.message(Command("anonymous_message"))
 async def cmd_anon(message: Message, state: FSMContext):
-    await message.reply("💌 <b>Анонимное послание</b>\n\nНапиши свои мысли, и они дойдут до администраторов клуба. Мы внимательно прочитаем каждое сообщение! 💕", parse_mode="HTML")
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Главное меню", callback_data="menu:cancel_anon")]
+        ]
+    )
+    await message.reply(
+        "💌 <b>Анонимное послание</b>\n\nНапиши свои мысли, и они дойдут до администраторов клуба. Мы внимательно прочитаем каждое сообщение! 💕",
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
     await state.set_state(AnonymousStates.waiting_for_message)
 
 
@@ -252,6 +276,8 @@ async def process_anon(message: Message, state: FSMContext, bot: Bot):
     logger.info(f"Anonymous message forwarded to {sent_count}/{len(admin_ids)} admins")
 
     await message.reply("💕 <b>Спасибо за твое послание!</b>\n\n✨ Оно отправлено администраторам клуба. Мы ценим твою откровенность и заботу! 🌸", parse_mode="HTML")
+    is_admin = await is_admin_user(message)
+    await send_main_menu(message, is_admin)
     await state.clear()
 
 
@@ -260,6 +286,8 @@ async def get_events(message: Message):
     events = get_all_events()
     if not events:
         await message.reply("🌸 <b>Дорогая, скоро появятся новые события!</b>\n\n📅 Пока администраторы планируют интересные встречи для нашего клуба 💕\n\nСледи за обновлениями! ✨", parse_mode="HTML")
+        is_admin = await is_admin_user(message)
+        await send_main_menu(message, is_admin)
         return
 
     intro_message = "🌟 <b>Предстоящие события нашего клуба:</b>\n\n💕 Приходи, будет интересно и тепло! 🌸\n\n"
@@ -278,6 +306,9 @@ async def get_events(message: Message):
         formatted = f"🎉 <b>{theme}</b>\n📅 {formatted_date}\n📍 {place}\n\n✨ Ждем именно тебя!"
         await message.reply(formatted, parse_mode="HTML")
 
+    is_admin = await is_admin_user(message)
+    await send_main_menu(message, is_admin)
+
 
 @router.callback_query(F.data.startswith("menu:"))
 async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
@@ -291,19 +322,14 @@ async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext,
         await cmd_anon(callback.message, state)
     elif action == "help":
         await send_help(callback.message, bot)
-    elif action == "admin":
-        admin_command = IsAdmin()
-        is_admin = await admin_command(callback.message)
-        if not is_admin:
-            await callback.answer("Команда только для администраторов", show_alert=True)
-            return
-        await callback.message.answer(
-            "👑 <b>Админ-панель GirlClub</b>\n\nВыбери раздел для управления:",
-            reply_markup=build_admin_menu(),
-            parse_mode="HTML"
-        )
-        await callback.answer()
-        return
+    elif action == "back_to_main":
+        is_admin = await is_admin_user(callback.message)
+        await send_main_menu(callback.message, is_admin)
+    elif action == "cancel_anon":
+        await state.clear()
+        await callback.message.answer("❎ <b>Отправка анонимного послания отменена.</b>", parse_mode="HTML")
+        is_admin = await is_admin_user(callback.message)
+        await send_main_menu(callback.message, is_admin)
     else:
         await callback.answer("Неизвестная команда меню", show_alert=True)
         return
@@ -311,10 +337,9 @@ async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext,
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("admin:"))
+@router.callback_query(F.data.startswith("menu_admin:"))
 async def process_admin_menu_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    admin_command = IsAdmin()
-    is_admin = await admin_command(callback.message)
+    is_admin = await is_admin_user(callback.message)
     if not is_admin:
         await callback.answer("Только для администраторов", show_alert=True)
         return

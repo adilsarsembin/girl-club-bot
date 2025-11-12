@@ -418,7 +418,8 @@ async def cmd_manage_quotes(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✨ Добавить цитату", callback_data="quotes:add")],
         [InlineKeyboardButton(text="📝 Показать все цитаты", callback_data="quotes:list")],
-        [InlineKeyboardButton(text="🗑️ Удалить цитату", callback_data="quotes:delete")]
+        [InlineKeyboardButton(text="🗑️ Удалить цитату", callback_data="quotes:delete")],
+        [InlineKeyboardButton(text="⬅️ Главное меню", callback_data="menu:back_to_main")]
     ])
 
     await message.reply(
@@ -436,7 +437,8 @@ async def cmd_manage_photos(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📸 Добавить фотографию", callback_data="photos:add")],
         [InlineKeyboardButton(text="🖼️ Показать все фотографии", callback_data="photos:list")],
-        [InlineKeyboardButton(text="🗑️ Удалить фотографию", callback_data="photos:delete")]
+        [InlineKeyboardButton(text="🗑️ Удалить фотографию", callback_data="photos:delete")],
+        [InlineKeyboardButton(text="⬅️ Главное меню", callback_data="menu:back_to_main")]
     ])
 
     await message.reply(
@@ -454,7 +456,8 @@ async def cmd_manage_events(message: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎉 Создать событие", callback_data="events:add")],
         [InlineKeyboardButton(text="📅 Показать все события", callback_data="events:list")],
-        [InlineKeyboardButton(text="🗑️ Удалить событие", callback_data="events:delete")]
+        [InlineKeyboardButton(text="🗑️ Удалить событие", callback_data="events:delete")],
+        [InlineKeyboardButton(text="⬅️ Главное меню", callback_data="menu:back_to_main")]
     ])
 
     await message.reply(
@@ -679,6 +682,9 @@ async def process_send_all(message: Message, state: FSMContext, bot: Bot):
     logger.info(f"Broadcast completed: {sent_count} successful, {failed_count} failed, total users: {len(user_ids)}")
 
     await message.reply(f"💌 <b>Сообщение отправлено!</b>\n\n✨ Дошло до {sent_count} из {len(user_ids)} участниц\n\n💕 Спасибо, что заботишься о нашем клубе! 🌸", parse_mode="HTML")
+    await message.answer("⬅️ Возвращаемся в меню. Нажми кнопку ниже или команду /menu.", reply_markup=InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="⬅️ Главное меню", callback_data="menu:back_to_main")]]
+    ), parse_mode="HTML")
     await state.clear()
 
 
