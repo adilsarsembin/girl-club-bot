@@ -1,7 +1,0 @@
-2025-11-12 23:42:45 - root - INFO - Running without proxy (local mode)
-2025-11-12 23:42:45 - root - INFO - Bot instance created successfully
-2025-11-12 23:42:45 - apscheduler.scheduler - INFO - Scheduler started
-2025-11-12 23:42:45 - root - INFO - Scheduler started
-2025-11-12 23:42:45 - root - INFO - Dispatcher created with memory storage
-2025-11-12 23:42:45 - root - ERROR - Failed to initialize database: connection to server at "localhost" (::1), port 5432 failed: FATAL:  role "root" does not exist
-

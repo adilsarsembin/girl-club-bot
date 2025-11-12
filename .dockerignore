@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+.mypy_cache
+.coverage
+*.cover
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Local development files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+girl_club_bot.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Node modules (if any)
+node_modules/
+
+# Docker files (not needed in image)
+Dockerfile
+.dockerignore
+docker-compose.yml

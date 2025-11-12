@@ -268,11 +268,22 @@ Logs automatically rotate when they reach the size limit, preventing disk space 
 3. Set `PROXY_URL` if needed for your region
 4. Run `python main.py` in a console
 
-### Docker Deployment
+### Docker Deployment (Recommended for Railway)
+Railway auto-detects and uses Docker for **2-3x faster builds** with layer caching.
+
+**Local Development:**
 ```bash
-# Build and run with Docker Compose
-docker-compose up --build -d
+# Test Docker build locally
+./build.sh
+
+# Run with Docker Compose (includes PostgreSQL)
+docker-compose up --build
 ```
+
+**Railway automatically uses:**
+- `Dockerfile` for builds
+- `.dockerignore` for faster uploads
+- Layer caching for speed
 
 ## 🔧 Troubleshooting
 
