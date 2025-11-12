@@ -18,6 +18,7 @@ from handlers.admin import (
     cmd_manage_quotes,
     cmd_manage_photos,
     cmd_manage_events,
+    cmd_manage_anonymous,
     cmd_send_all,
 )
 
@@ -36,6 +37,7 @@ admin_commands = user_commands + [
     types.BotCommand(command="manage_quotes", description="Управление цитатами"),
     types.BotCommand(command="manage_photos", description="Управление фотографиями"),
     types.BotCommand(command="manage_events", description="Управление событиями"),
+    types.BotCommand(command="manage_anonymous", description="Управление анонимными сообщениями"),
     types.BotCommand(command="send_all", description="Отправить всем")
 ]
 
@@ -52,6 +54,7 @@ def build_main_menu(is_admin: bool) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="💭 Управление цитатами", callback_data="menu_admin:quotes")],
             [InlineKeyboardButton(text="📸 Управление фотографиями", callback_data="menu_admin:photos")],
             [InlineKeyboardButton(text="🎉 Управление событиями", callback_data="menu_admin:events")],
+            [InlineKeyboardButton(text="💌 Анонимные сообщения", callback_data="menu_admin:anonymous")],
             [InlineKeyboardButton(text="📢 Рассылка участницам", callback_data="menu_admin:broadcast")],
         ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -139,6 +142,7 @@ async def send_help(message: types.Message, bot: Bot, is_admin_override: Optiona
         help_text += "🌟 /manage_quotes - Управление цитатами мудрости\n"
         help_text += "🌟 /manage_photos - Управление вдохновляющими фотографиями\n"
         help_text += "🌟 /manage_events - Управление событиями клуба\n"
+        help_text += "🌟 /manage_anonymous - Управление анонимными сообщениями\n"
         help_text += "🌟 /send_all - Отправить сообщение всем участницам\n"
 
         help_text += "\n💖 <i>Ты делаешь наш клуб прекрасным местом! Спасибо! 🌹</i>"
@@ -369,6 +373,8 @@ async def process_admin_menu_callback(callback: CallbackQuery, state: FSMContext
         await cmd_manage_photos(callback.message)
     elif action == "events":
         await cmd_manage_events(callback.message)
+    elif action == "anonymous":
+        await cmd_manage_anonymous(callback.message)
     elif action == "broadcast":
         await cmd_send_all(callback.message, state, bot)
     else:

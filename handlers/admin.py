@@ -12,12 +12,14 @@ from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 from database.events import add_event, delete_event, get_all_events
 from database.photos import add_photo, get_all_photos, delete_photo, get_photo_by_id
 from database.quotes import add_quote, get_all_quotes, delete_quote
+from database.anonymous import get_all_anonymous_messages, delete_anonymous_message, reply_to_anonymous_message, get_anonymous_message_by_id
 from database.users import get_all_user_ids_by_role
 from filters import IsAdmin
 from jobs import schedule_reminder
 from states.add_event import AddEventStates
 from states.add_photo import AddPhotoStates
 from states.add_quote import AddQuoteStates
+from states.anonymous import AnonymousStates
 from states.send_all import SendAllStates
 
 router = Router()
@@ -741,4 +743,186 @@ async def process_delete_event(callback: CallbackQuery):
         await send_main_menu(callback.message, is_admin)
     else:
         await callback.message.edit_text("💔 <b>Ой, не получилось отменить событие</b>\n\n❌ Попробуй еще раз или обратись к администратору 💕", parse_mode="HTML")
+    await callback.answer()
+
+
+# === ANONYMOUS MESSAGES MANAGEMENT ===
+
+@router.message(Command("manage_anonymous"), IsAdmin())
+async def cmd_manage_anonymous(message: Message):
+    """
+    Handler for the /manage_anonymous command. Shows anonymous message management options.
+    """
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📨 Просмотреть сообщения", callback_data="anon:list")],
+        [InlineKeyboardButton(text="🗑️ Удалить сообщения", callback_data="anon:delete")]
+    ])
+
+    await message.reply(
+        "💌 <b>Управление анонимными сообщениями</b>\n\n💕 Выбери, что хочешь сделать с сообщениями участниц ✨",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(F.data.startswith("anon:"))
+async def process_anonymous_management(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for anonymous message management actions.
+    """
+    action = callback.data.split(":")[1]
+
+    if action == "list":
+        messages = get_all_anonymous_messages()
+        if not messages:
+            await callback.message.edit_text("📨 <b>Анонимных сообщений пока нет</b>\n\n💕 Участницы еще не отправляли анонимные послания ✨", parse_mode="HTML")
+            return
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for msg_id, user_id, message_text, created_at, reply, replied_by, replied_at in messages:
+            # Truncate message for display
+            display_text = message_text[:40] + "..." if len(message_text) > 40 else message_text
+            status = "✅ Отвечено" if reply else "⏳ Ожидает ответа"
+
+            keyboard.inline_keyboard.append([
+                InlineKeyboardButton(
+                    text=f"💌 {display_text} - {status}",
+                    callback_data=f"anon_view:{msg_id}"
+                )
+            ])
+
+        await callback.message.edit_text("📨 <b>Все анонимные сообщения:</b>\n\n💕 Нажми на сообщение, чтобы просмотреть или ответить ✨", reply_markup=keyboard, parse_mode="HTML")
+
+    elif action == "delete":
+        messages = get_all_anonymous_messages()
+        if not messages:
+            await callback.message.edit_text("🗑️ <b>Сообщений для удаления нет</b>\n\n💕 Все сообщения в безопасности! 🌸", parse_mode="HTML")
+            return
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+        for msg_id, user_id, message_text, created_at, reply, replied_by, replied_at in messages:
+            display_text = message_text[:30] + "..." if len(message_text) > 30 else message_text
+            keyboard.inline_keyboard.append([
+                InlineKeyboardButton(
+                    text=f"🗑️ {display_text}",
+                    callback_data=f"anon_del:{msg_id}"
+                )
+            ])
+
+        await callback.message.edit_text("🗑️ <b>Выбери сообщение для удаления:</b>\n\n💕 Выбери то, которое нужно удалить 🌸", reply_markup=keyboard, parse_mode="HTML")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("anon_view:"))
+async def process_view_anonymous_message(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for viewing and replying to anonymous messages.
+    """
+    message_id = int(callback.data.split(":")[1])
+    message_data = get_anonymous_message_by_id(message_id)
+
+    if not message_data:
+        await callback.answer("Сообщение не найдено", show_alert=True)
+        return
+
+    response = f"💌 <b>Анонимное сообщение #{message_data['id']}</b>\n\n"
+    response += f"💭 <b>Сообщение:</b> {message_data['message']}\n"
+    response += f"📅 <b>Отправлено:</b> {message_data['created_at'].strftime('%d.%m.%Y %H:%M')}\n\n"
+
+    if message_data['reply']:
+        response += f"💕 <b>Ваш ответ:</b> {message_data['reply']}\n"
+        response += f"📅 <b>Ответ отправлен:</b> {message_data['replied_at'].strftime('%d.%m.%Y %H:%M')}\n\n"
+        response += "✅ <b>Это сообщение уже отвечено</b>"
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад к списку", callback_data="anon:list")]
+        ])
+    else:
+        response += "⏳ <b>Это сообщение ожидает ответа</b>\n\n💕 Хотите ответить участнице?"
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💌 Ответить", callback_data=f"anon_reply:{message_id}")],
+            [InlineKeyboardButton(text="⬅️ Назад к списку", callback_data="anon:list")]
+        ])
+
+    await callback.message.edit_text(response, reply_markup=keyboard, parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("anon_reply:"))
+async def process_reply_anonymous_message(callback: CallbackQuery, state: FSMContext):
+    """
+    Handler for starting reply to anonymous message.
+    """
+    message_id = int(callback.data.split(":")[1])
+
+    # Store message ID in state for reply processing
+    await state.update_data(reply_message_id=message_id)
+
+    await callback.message.edit_text(
+        "💌 <b>Напишите ваш ответ</b>\n\n✨ Участница получит ваше сообщение анонимно 💕\n\n💭 Напишите теплый и поддерживающий ответ!",
+        parse_mode="HTML"
+    )
+
+    await state.set_state(AnonymousStates.waiting_for_reply)
+    await callback.answer()
+
+
+@router.message(AnonymousStates.waiting_for_reply)
+async def process_anonymous_reply(message: Message, state: FSMContext, bot: Bot):
+    """
+    Handler for processing admin reply to anonymous message.
+    """
+    data = await state.get_data()
+    message_id = data.get('reply_message_id')
+
+    if not message_id:
+        await message.reply("💔 <b>Ошибка</b>\n\n❌ Не удалось найти сообщение для ответа 💕", parse_mode="HTML")
+        await state.clear()
+        return
+
+    reply_text = message.text.strip()
+
+    # Save reply to database
+    if reply_to_anonymous_message(message_id, reply_text, message.from_user.id):
+        # Get original message to find user
+        original_message = get_anonymous_message_by_id(message_id)
+        if original_message:
+            try:
+                # Send reply to the original user
+                user_response = f"💌 <b>Ответ на ваше анонимное послание</b>\n\n💕 Администратор прочитал ваше сообщение и ответил:\n\n💭 <i>{reply_text}</i>\n\n✨ Спасибо, что доверяете нам! 🌸"
+                await bot.send_message(original_message['user_id'], user_response, parse_mode="HTML")
+            except Exception as e:
+                logger.warning(f"Failed to send reply to user {original_message['user_id']}: {e}")
+
+        await message.reply("✅ <b>Ответ отправлен!</b>\n\n💕 Участница получила ваш теплый ответ ✨", parse_mode="HTML")
+
+        # Return to main menu
+        from handlers.user import is_admin_user, send_main_menu
+        is_admin = await is_admin_user(message)
+        await send_main_menu(message, is_admin)
+    else:
+        await message.reply("💔 <b>Ошибка при сохранении ответа</b>\n\n❌ Попробуйте еще раз 💕", parse_mode="HTML")
+
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith("anon_del:"))
+async def process_delete_anonymous_message(callback: CallbackQuery):
+    """
+    Handler for deleting anonymous messages.
+    """
+    message_id = int(callback.data.split(":")[1])
+
+    if delete_anonymous_message(message_id):
+        await callback.message.edit_text("✅ <b>Анонимное сообщение удалено</b>\n\n💕 Сообщение успешно удалено из системы 🌸", parse_mode="HTML")
+
+        # Return to main menu after successful deletion
+        from handlers.user import is_admin_user, send_main_menu
+        is_admin = await is_admin_user(callback)
+        await send_main_menu(callback.message, is_admin)
+    else:
+        await callback.message.edit_text("💔 <b>Ошибка при удалении</b>\n\n❌ Не удалось удалить сообщение 💕", parse_mode="HTML")
+
     await callback.answer()

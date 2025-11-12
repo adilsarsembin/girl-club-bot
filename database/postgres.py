@@ -69,9 +69,34 @@ def init_db():
             id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             message TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reply TEXT,
+            replied_by BIGINT,
+            replied_at TIMESTAMP
         )
     """)
+
+    # Ensure all required columns exist (for migration compatibility)
+    try:
+        cursor.execute("""
+            ALTER TABLE anonymous_messages
+            ADD COLUMN IF NOT EXISTS reply TEXT,
+            ADD COLUMN IF NOT EXISTS replied_by BIGINT,
+            ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP
+        """)
+    except Exception as e:
+        print(f"Column addition warning (may already exist): {e}")
+
+    # Add indexes for better performance
+    try:
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_anon_messages_created_at ON anonymous_messages(created_at DESC)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_anon_messages_user_id ON anonymous_messages(user_id)
+        """)
+    except Exception as e:
+        print(f"Index creation warning (safe to ignore): {e}")
 
     conn.commit()
     cursor.close()
