@@ -19,6 +19,7 @@ from states.add_event import AddEventStates
 from states.add_photo import AddPhotoStates
 from states.add_quote import AddQuoteStates
 from states.send_all import SendAllStates
+from handlers.user import send_main_menu, is_admin_user
 
 router = Router()
 
@@ -67,8 +68,13 @@ async def process_place(message: Message, state: FSMContext, bot: Bot):
     if event_id:
         await schedule_reminder(bot, data['full_datetime'], event_id, data['theme'], place)
         await message.reply(f"🎉 <b>Ура! Событие создано!</b>\n\n📅 {data['full_datetime']}\n🎯 {data['theme']}\n📍 {place}\n\n💕 Все участницы получат напоминание за 24 часа!\n\n✨ Спасибо, что делаешь наш клуб таким замечательным!", parse_mode="HTML")
+
+        # Return to main menu after successful event creation
+        is_admin = await is_admin_user(message)
+        await send_main_menu(message, is_admin)
     else:
         await message.reply("💔 <b>Ой, что-то пошло не так</b>\n\n❌ Не удалось добавить событие. Попробуй еще раз или обратись к администратору 💕", parse_mode="HTML")
+        return
 
     await state.clear()
 
@@ -88,9 +94,15 @@ async def process_quote(message: Message, state: FSMContext):
     if add_quote(text):
         logger.info(f"Admin {admin_id} (@{admin_username}) added quote")
         await message.reply("💖 <b>Прекрасная цитата добавлена!</b>\n\n✨ Теперь она будет вдохновлять участниц клуба!\n\n🌸 Спасибо за твою заботу! 💕", parse_mode="HTML")
+
+        # Return to main menu after successful quote addition
+        is_admin = await is_admin_user(message)
+        await send_main_menu(message, is_admin)
     else:
         logger.error(f"Failed to add quote for admin {admin_id}")
         await message.reply("💔 <b>Ой, что-то пошло не так</b>\n\n❌ Не удалось добавить цитату. Попробуй еще раз 💕", parse_mode="HTML")
+        return
+
     await state.clear()
 
 
@@ -168,6 +180,10 @@ async def process_delete_quote(callback: CallbackQuery):
     if delete_quote(quote_id):
         truncated_text = quote_info[1][:50] + "..." if len(quote_info[1]) > 50 else quote_info[1]
         await callback.message.edit_text(f"✅ Цитата успешно удалена!\n\n💬 Текст: {truncated_text}")
+
+        # Return to main menu after successful deletion
+        is_admin = await is_admin_user(callback)
+        await send_main_menu(callback.message, is_admin)
     else:
         await callback.message.edit_text("❌ Ошибка при удалении цитаты.")
 
@@ -289,12 +305,15 @@ async def process_caption(message: Message, state: FSMContext):
             else:
                 logger.info(f"Admin {admin_id} (@{admin_username}) added photo without caption")
                 await message.reply("🌸 <b>Прекрасная фотография добавлена!</b>\n\n💕 Она будет радовать участниц клуба!\n\n✨ Спасибо за твою заботу! 💖", parse_mode="HTML")
+
+            # Return to main menu after successful photo addition
+            is_admin = await is_admin_user(message)
+            await send_main_menu(message, is_admin)
+            await state.clear()
         else:
             logger.error(f"Failed to add photo for admin {message.from_user.id} - add_photo returned: {photo_result}")
             await message.reply("💔 <b>Не удалось сохранить фото</b>\n\n❌ Проверь подключение к базе данных и попробуй еще раз 💕", parse_mode="HTML")
             return
-
-        await state.clear()
 
     except Exception as e:
         logger.error(f"Error in caption processing: {e}")
@@ -397,6 +416,10 @@ async def process_delete_photo(callback: CallbackQuery):
     if delete_photo(photo_id):
         filename_display = photo['filename'] or "Без имени"
         await callback.message.edit_text(f"✅ Фотография удалена!\n\n📸 {filename_display}")
+
+        # Return to main menu after successful deletion
+        is_admin = await is_admin_user(callback)
+        await send_main_menu(callback.message, is_admin)
     else:
         await callback.message.edit_text("❌ Ошибка при удалении фотографии.")
 
@@ -707,6 +730,10 @@ async def process_delete_event(callback: CallbackQuery):
     event_id = int(callback.data.split(":")[1])
     if delete_event(event_id):
         await callback.message.edit_text("✅ <b>Событие отменено</b>\n\n💕 Участницы будут оповещены об изменениях 🌸", parse_mode="HTML")
+
+        # Return to main menu after successful deletion
+        is_admin = await is_admin_user(callback)
+        await send_main_menu(callback.message, is_admin)
     else:
         await callback.message.edit_text("💔 <b>Ой, не получилось отменить событие</b>\n\n❌ Попробуй еще раз или обратись к администратору 💕", parse_mode="HTML")
     await callback.answer()

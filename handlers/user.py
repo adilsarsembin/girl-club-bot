@@ -4,13 +4,14 @@ from aiogram import Bot, Router, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BotCommandScopeChat, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from typing import Union, Optional
 
 from database.anonymous import add_anonymous_message
 from database.events import get_all_events
 from database.photos import get_random_photo
 from database.quotes import get_random_quote
 from database.users import add_user, get_all_user_ids_by_role
-from filters import IsAdmin
+from filters import IsAdmin, ADMIN_IDS
 from logging_config import get_logger
 from states.anonymous import AnonymousStates
 from handlers.admin import (
@@ -75,10 +76,13 @@ def append_back_button(keyboard: InlineKeyboardMarkup, target: str = "back_to_ma
     return keyboard
 
 
-async def is_admin_user(message: Message) -> bool:
-    admin_filter = IsAdmin()
+async def is_admin_user(event: Union[Message, CallbackQuery]) -> bool:
     try:
-        return await admin_filter(message)
+        if isinstance(event, CallbackQuery):
+            user_id = event.from_user.id
+        else:
+            user_id = event.from_user.id
+        return user_id in ADMIN_IDS
     except Exception:
         return False
 
@@ -114,12 +118,14 @@ async def send_welcome(message: types.Message, bot: Bot):
 
 
 @router.message(Command("help"))
-async def send_help(message: types.Message, bot: Bot):
+async def send_help(message: types.Message, bot: Bot, is_admin_override: Optional[bool] = None):
     """
     Handler for the /help command. Shows available commands based on user role.
     """
-    admin_command = IsAdmin()
-    is_admin = await admin_command(message)
+    if is_admin_override is not None:
+        is_admin = is_admin_override
+    else:
+        is_admin = await is_admin_user(message)
 
     help_text = "🌸 <b>Дорогая, вот что я умею для тебя:</b> ✨\n\n"
 
@@ -211,7 +217,7 @@ async def process_motivation_choice(callback: CallbackQuery):
                 "🌸 <b>Милая, фотографии скоро появятся!</b>\n\n📸 Пока администраторы готовят вдохновляющие картинки для тебя 💖",
                 parse_mode="HTML"
             )
-            is_admin = await is_admin_user(callback.message)
+            is_admin = await is_admin_user(callback)
             await send_main_menu(callback.message, is_admin)
             await callback.answer()
             return
@@ -239,7 +245,7 @@ async def process_motivation_choice(callback: CallbackQuery):
                 parse_mode="HTML"
             )
 
-    is_admin = await is_admin_user(callback.message)
+    is_admin = await is_admin_user(callback)
     await send_main_menu(callback.message, is_admin)
     await callback.answer()
 
@@ -331,14 +337,15 @@ async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext,
     elif action == "anonymous":
         await cmd_anon(callback.message, state)
     elif action == "help":
-        await send_help(callback.message, bot)
+        is_admin = await is_admin_user(callback)
+        await send_help(callback.message, bot, is_admin_override=is_admin)
     elif action == "back_to_main":
-        is_admin = await is_admin_user(callback.message)
+        is_admin = await is_admin_user(callback)
         await send_main_menu(callback.message, is_admin)
     elif action == "cancel_anon":
         await state.clear()
         await callback.message.answer("❎ <b>Отправка анонимного послания отменена.</b>", parse_mode="HTML")
-        is_admin = await is_admin_user(callback.message)
+        is_admin = await is_admin_user(callback)
         await send_main_menu(callback.message, is_admin)
     else:
         await callback.answer("Неизвестная команда меню", show_alert=True)
@@ -349,7 +356,7 @@ async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext,
 
 @router.callback_query(F.data.startswith("menu_admin:"))
 async def process_admin_menu_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    is_admin = await is_admin_user(callback.message)
+    is_admin = await is_admin_user(callback)
     if not is_admin:
         await callback.answer("Только для администраторов", show_alert=True)
         return
