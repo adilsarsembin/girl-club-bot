@@ -347,3 +347,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 **Made with 💖 for our amazing GirlClub community!** 🌸✨
 
 For questions or support, contact the bot administrators.
+git 

@@ -189,31 +189,60 @@ async def process_photo_upload(message: Message, state: FSMContext):
     Handler for processing photo upload.
     """
     try:
-        if not message.photo:
-            await message.reply("📸 <b>Мне нужна фотография!</b>\n\n💕 Отправь картинку, которую хочешь добавить в коллекцию ✨", parse_mode="HTML")
+        file_id = None
+        file_unique_id = None
+        filename = None
+
+        if message.photo:
+            photo = message.photo[-1]
+            file_id = photo.file_id
+            file_unique_id = photo.file_unique_id
+        elif (
+            message.document
+            and message.document.mime_type
+            and message.document.mime_type.startswith("image/")
+        ):
+            doc = message.document
+            file_id = doc.file_id
+            file_unique_id = doc.file_unique_id
+            filename = doc.file_name
+        else:
+            await message.reply(
+                "📸 <b>Мне нужна фотография!</b>\n\n"
+                "💕 Отправь изображение как фото или выбери «Отправить как фото», если загружаешь файл. ✨",
+                parse_mode="HTML"
+            )
             return
 
-        # Get the largest photo size (best quality)
-        photo = message.photo[-1]
-
-        # Validate photo data
-        if not photo.file_id or not photo.file_unique_id:
-            await message.reply("💔 <b>Ошибка обработки фото</b>\n\n❌ Попробуй отправить фотографию еще раз 💕", parse_mode="HTML")
+        if not file_id or not file_unique_id:
+            await message.reply(
+                "💔 <b>Ошибка обработки изображения</b>\n\n"
+                "❌ Попробуй отправить фотографию еще раз или выбери другую. 💕",
+                parse_mode="HTML"
+            )
             return
 
-        # Store photo info temporarily in state
         await state.update_data(
-            file_id=photo.file_id,
-            file_unique_id=photo.file_unique_id,
-            filename=None  # Photos don't have filenames, only documents do
+            file_id=file_id,
+            file_unique_id=file_unique_id,
+            filename=filename
         )
 
-        await message.reply("📝 <b>Хочешь добавить нежное описание к фото?</b>\n\n💭 Расскажи, что вдохновляет в этой картинке!\n\n✨ Или нажми /skip, если описание не нужно 💕", parse_mode="HTML")
+        await message.reply(
+            "📝 <b>Хочешь добавить нежное описание к фото?</b>\n\n"
+            "💭 Расскажи, что вдохновляет в этой картинке!\n\n"
+            "✨ Или нажми /skip, если описание не нужно 💕",
+            parse_mode="HTML"
+        )
         await state.set_state(AddPhotoStates.waiting_for_caption)
 
     except Exception as e:
         logger.error(f"Error in photo upload: {e}")
-        await message.reply("💔 <b>Произошла ошибка при обработке фото</b>\n\n❌ Попробуй еще раз или обратись к администратору 💕", parse_mode="HTML")
+        await message.reply(
+            "💔 <b>Произошла ошибка при обработке фото</b>\n\n"
+            "❌ Попробуй еще раз или обратись к администратору 💕",
+            parse_mode="HTML"
+        )
         await state.clear()
 
 
