@@ -23,7 +23,7 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Create tables with PostgreSQL syntax
+    # Create tables with IF NOT EXISTS to preserve existing data
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id SERIAL PRIMARY KEY,
@@ -43,37 +43,20 @@ def init_db():
         )
     """)
 
-    # Check if photos table exists and has correct structure
     cursor.execute("""
-        SELECT EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_name = 'photos'
+        CREATE TABLE IF NOT EXISTS photos (
+            id SERIAL PRIMARY KEY,
+            file_id VARCHAR(255) NOT NULL,
+            file_unique_id VARCHAR(255) NOT NULL,
+            filename VARCHAR(255),
+            caption TEXT,
+            uploaded_by BIGINT,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    table_exists = cursor.fetchone()[0]
 
-    if not table_exists:
-        cursor.execute("""
-            CREATE TABLE photos (
-                id SERIAL PRIMARY KEY,
-                file_id VARCHAR(255) NOT NULL,
-                file_unique_id VARCHAR(255) NOT NULL,
-                filename VARCHAR(255),
-                caption TEXT,
-                uploaded_by BIGINT,
-                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Add explicit index for better performance
-        cursor.execute("""
-            CREATE INDEX idx_photos_uploaded_at ON photos(uploaded_at DESC)
-        """)
-        cursor.execute("""
-            CREATE INDEX idx_photos_file_id ON photos(file_id)
-        """)
-    else:
-        # Ensure required columns exist (for migration compatibility)
+    # Ensure all required columns exist (for migration compatibility)
+    try:
         cursor.execute("""
             ALTER TABLE photos
             ADD COLUMN IF NOT EXISTS file_unique_id VARCHAR(255),
@@ -82,6 +65,19 @@ def init_db():
             ADD COLUMN IF NOT EXISTS uploaded_by BIGINT,
             ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         """)
+    except Exception as e:
+        print(f"Column addition warning (may already exist): {e}")
+
+    # Add indexes for better performance (IF NOT EXISTS to avoid errors)
+    try:
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_photos_uploaded_at ON photos(uploaded_at DESC)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_photos_file_id ON photos(file_id)
+        """)
+    except Exception as e:
+        print(f"Index creation warning (safe to ignore): {e}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
