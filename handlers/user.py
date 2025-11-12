@@ -223,11 +223,21 @@ async def process_motivation_choice(callback: CallbackQuery):
         caption += "\n\n🌟 Пусть она наполнит тебя силой и красотой!"
 
         await callback.message.delete()
-        await callback.message.answer_photo(
-            photo=photo['file_id'],
-            caption=caption,
-            parse_mode="HTML"
-        )
+        try:
+            await callback.message.answer_photo(
+                photo=photo['file_id'],
+                caption=caption,
+                parse_mode="HTML"
+            )
+        except Exception as send_err:
+            logger.warning(
+                f"Failed to send photo {photo['id']} via photo API, retrying as document. Error: {send_err}"
+            )
+            await callback.message.answer_document(
+                document=photo['file_id'],
+                caption=caption,
+                parse_mode="HTML"
+            )
 
     is_admin = await is_admin_user(callback.message)
     await send_main_menu(callback.message, is_admin)
