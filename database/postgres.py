@@ -23,7 +23,6 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Create tables with IF NOT EXISTS to preserve existing data
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id SERIAL PRIMARY KEY,
@@ -54,30 +53,6 @@ def init_db():
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-
-    # Ensure all required columns exist (for migration compatibility)
-    try:
-        cursor.execute("""
-            ALTER TABLE photos
-            ADD COLUMN IF NOT EXISTS file_unique_id VARCHAR(255),
-            ADD COLUMN IF NOT EXISTS filename VARCHAR(255),
-            ADD COLUMN IF NOT EXISTS caption TEXT,
-            ADD COLUMN IF NOT EXISTS uploaded_by BIGINT,
-            ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        """)
-    except Exception as e:
-        print(f"Column addition warning (may already exist): {e}")
-
-    # Add indexes for better performance (IF NOT EXISTS to avoid errors)
-    try:
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_photos_uploaded_at ON photos(uploaded_at DESC)
-        """)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_photos_file_id ON photos(file_id)
-        """)
-    except Exception as e:
-        print(f"Index creation warning (safe to ignore): {e}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (

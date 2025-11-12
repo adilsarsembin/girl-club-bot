@@ -13,6 +13,12 @@ from database.users import add_user, get_all_user_ids_by_role
 from filters import IsAdmin
 from logging_config import get_logger
 from states.anonymous import AnonymousStates
+from handlers.admin import (
+    cmd_manage_quotes,
+    cmd_manage_photos,
+    cmd_manage_events,
+    cmd_send_all,
+)
 
 logger = get_logger(__name__)
 
@@ -31,6 +37,41 @@ admin_commands = user_commands + [
     types.BotCommand(command="manage_events", description="Управление событиями"),
     types.BotCommand(command="send_all", description="Отправить всем")
 ]
+
+
+def build_main_menu(is_admin: bool) -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton(text="💖 Вдохновение", callback_data="menu:motivation")],
+        [InlineKeyboardButton(text="📅 События", callback_data="menu:events")],
+        [InlineKeyboardButton(text="💌 Анонимное послание", callback_data="menu:anonymous")],
+        [InlineKeyboardButton(text="ℹ️ Помощь", callback_data="menu:help")],
+    ]
+    if is_admin:
+        keyboard.append([InlineKeyboardButton(text="👑 Админ-панель", callback_data="menu:admin")])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def build_admin_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💭 Цитаты", callback_data="admin:quotes")],
+            [InlineKeyboardButton(text="📸 Фото", callback_data="admin:photos")],
+            [InlineKeyboardButton(text="🎉 События", callback_data="admin:events")],
+            [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin:broadcast")],
+        ]
+    )
+
+
+async def send_main_menu(message: Message, is_admin: bool) -> None:
+    await message.answer(
+        "✨ <b>Выбери, что хочешь сделать:</b>\n\n"
+        "• Получи вдохновение\n"
+        "• Узнай о предстоящих событиях\n"
+        "• Отправь анонимное послание\n"
+        "• Посмотри доступные возможности\n",
+        reply_markup=build_main_menu(is_admin),
+        parse_mode="HTML"
+    )
 
 @router.message(CommandStart())
 async def send_welcome(message: types.Message, bot: Bot):
@@ -59,6 +100,8 @@ async def send_welcome(message: types.Message, bot: Bot):
     else:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeChat(chat_id=message.chat.id))
         logger.debug(f"User commands set for user {user_id}")
+
+    await send_main_menu(message, is_admin)
 
 
 @router.message(Command("help"))
@@ -92,6 +135,14 @@ async def send_help(message: types.Message, bot: Bot):
         help_text += "\n💖 <i>Я здесь, чтобы поддерживать и вдохновлять тебя! 🌸</i>"
 
     await message.reply(help_text, parse_mode="HTML")
+    await send_main_menu(message, is_admin)
+
+
+@router.message(Command("menu"))
+async def show_menu(message: Message):
+    admin_command = IsAdmin()
+    is_admin = await admin_command(message)
+    await send_main_menu(message, is_admin)
 
 
 @router.message(Command("motivation"))
@@ -226,3 +277,60 @@ async def get_events(message: Message):
 
         formatted = f"🎉 <b>{theme}</b>\n📅 {formatted_date}\n📍 {place}\n\n✨ Ждем именно тебя!"
         await message.reply(formatted, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("menu:"))
+async def process_main_menu_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    action = callback.data.split(":")[1]
+
+    if action == "motivation":
+        await cmd_motivation(callback.message)
+    elif action == "events":
+        await get_events(callback.message)
+    elif action == "anonymous":
+        await cmd_anon(callback.message, state)
+    elif action == "help":
+        await send_help(callback.message, bot)
+    elif action == "admin":
+        admin_command = IsAdmin()
+        is_admin = await admin_command(callback.message)
+        if not is_admin:
+            await callback.answer("Команда только для администраторов", show_alert=True)
+            return
+        await callback.message.answer(
+            "👑 <b>Админ-панель GirlClub</b>\n\nВыбери раздел для управления:",
+            reply_markup=build_admin_menu(),
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        return
+    else:
+        await callback.answer("Неизвестная команда меню", show_alert=True)
+        return
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:"))
+async def process_admin_menu_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    admin_command = IsAdmin()
+    is_admin = await admin_command(callback.message)
+    if not is_admin:
+        await callback.answer("Только для администраторов", show_alert=True)
+        return
+
+    action = callback.data.split(":")[1]
+
+    if action == "quotes":
+        await cmd_manage_quotes(callback.message)
+    elif action == "photos":
+        await cmd_manage_photos(callback.message)
+    elif action == "events":
+        await cmd_manage_events(callback.message)
+    elif action == "broadcast":
+        await cmd_send_all(callback.message, state, bot)
+    else:
+        await callback.answer("Неизвестная команда админ-панели", show_alert=True)
+        return
+
+    await callback.answer()
