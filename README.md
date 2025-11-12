@@ -214,12 +214,16 @@ CREATE TABLE anonymous_messages (
 | `LOG_LEVEL` | Logging level | INFO |
 | `LOG_MAX_BYTES` | Max log file size | 5242880 (5MB) |
 | `LOG_BACKUP_COUNT` | Number of log backups | 2 |
+| `DISABLE_FILE_LOGGING` | Disable file logging for cloud | false |
 
 ### Logging Presets
 
 - **production**: INFO level, 5MB files, 2 backups (15MB total max)
 - **development**: DEBUG level, 10MB files, 3 backups
+- **cloud**: INFO level to console (Railway/Heroku), no file logging
 - **minimal**: WARNING level, 2MB files, 1 backup
+
+**Note**: Cloud environments auto-detect Railway/Heroku and use `cloud` preset
 
 ## 📊 Monitoring & Logs
 
@@ -249,6 +253,14 @@ grep "Admin" girl_club_bot.log
 Logs automatically rotate when they reach the size limit, preventing disk space issues.
 
 ## 🚀 Deployment
+
+### Railway Deployment (Recommended)
+1. Create Railway account and Hobby plan ($5/month)
+2. Deploy from GitHub repo or Railway dashboard
+3. Add PostgreSQL plugin
+4. Set environment variables (TELEGRAM_API_TOKEN, ADMIN_IDS, LOG_PRESET=production)
+5. Railway auto-detects cloud environment and enables console logging
+6. Monitor logs in Railway dashboard → Deployments → View Logs
 
 ### PythonAnywhere Deployment
 1. Upload all files to PythonAnywhere

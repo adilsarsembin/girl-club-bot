@@ -13,7 +13,8 @@ def setup_logging(
     max_bytes: int = 5 * 1024 * 1024,
     backup_count: int = 2,
     log_level: int = logging.INFO,
-    console_level: int = logging.WARNING
+    console_level: int = logging.WARNING,
+    enable_file_logging: bool = True
 ) -> logging.Logger:
     """
     Configure logging for the bot with memory-efficient settings
@@ -24,6 +25,7 @@ def setup_logging(
         backup_count: Number of backup files to keep
         log_level: Logging level for file handler
         console_level: Logging level for console handler
+        enable_file_logging: Whether to enable file logging (disable for cloud environments)
 
     Returns:
         Configured logger instance
@@ -39,20 +41,22 @@ def setup_logging(
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding='utf-8'
-    )
-    file_handler.setLevel(log_level)
-    file_handler.setFormatter(formatter)
+    # Add file handler only if enabled (skip for cloud environments)
+    if enable_file_logging:
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
+    # Always add console handler for Railway/cloud visibility
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
     console_handler.setFormatter(formatter)
-
-    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
     return logger
@@ -71,7 +75,8 @@ LOGGING_PRESETS = {
         'max_bytes': 10 * 1024 * 1024,
         'backup_count': 3,
         'log_level': logging.DEBUG,
-        'console_level': logging.INFO
+        'console_level': logging.INFO,
+        'enable_file_logging': True
     },
 
     'production': {
@@ -79,7 +84,17 @@ LOGGING_PRESETS = {
         'max_bytes': 5 * 1024 * 1024,
         'backup_count': 2,
         'log_level': logging.INFO,
-        'console_level': logging.WARNING
+        'console_level': logging.WARNING,
+        'enable_file_logging': True
+    },
+
+    'cloud': {
+        'log_file': 'girl_club_bot.log',
+        'max_bytes': 5 * 1024 * 1024,
+        'backup_count': 2,
+        'log_level': logging.INFO,
+        'console_level': logging.INFO,
+        'enable_file_logging': False
     },
 
     'minimal': {
@@ -87,7 +102,8 @@ LOGGING_PRESETS = {
         'max_bytes': 2 * 1024 * 1024,
         'backup_count': 1,
         'log_level': logging.WARNING,
-        'console_level': logging.ERROR
+        'console_level': logging.ERROR,
+        'enable_file_logging': True
     }
 }
 
@@ -95,16 +111,26 @@ LOGGING_PRESETS = {
 def setup_logging_from_env() -> logging.Logger:
     """
     Setup logging based on environment variables
-    Defaults to production preset if not specified
+    Defaults to cloud preset for Railway/Heroku environments, production otherwise
 
     Environment variables:
-    - LOG_PRESET: development/production/minimal (default: production)
+    - LOG_PRESET: development/production/cloud/minimal (default: auto-detect)
     - LOG_FILE: custom log file path
     - LOG_LEVEL: DEBUG/INFO/WARNING/ERROR
     - LOG_MAX_BYTES: max bytes per file
     - LOG_BACKUP_COUNT: number of backup files
+    - DISABLE_FILE_LOGGING: set to 'true' to disable file logging (for cloud)
     """
-    preset_name = os.getenv('LOG_PRESET', 'production')
+    # Auto-detect cloud environment
+    preset_name = os.getenv('LOG_PRESET')
+    if not preset_name:
+        # Auto-detect Railway/Heroku/Render environments
+        if (os.getenv('RAILWAY_ENVIRONMENT') or
+            os.getenv('DYNO') or  # Heroku
+            os.getenv('RENDER_SERVICE_ID')):  # Render
+            preset_name = 'cloud'
+        else:
+            preset_name = 'production'
 
     if preset_name not in LOGGING_PRESETS:
         preset_name = 'production'
@@ -135,6 +161,10 @@ def setup_logging_from_env() -> logging.Logger:
             config['backup_count'] = int(os.getenv('LOG_BACKUP_COUNT'))
         except ValueError:
             pass
+
+    # Allow manual override of file logging
+    if os.getenv('DISABLE_FILE_LOGGING', '').lower() in ('true', '1', 'yes'):
+        config['enable_file_logging'] = False
 
     return setup_logging(**config)
 

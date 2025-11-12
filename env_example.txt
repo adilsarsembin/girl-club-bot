@@ -19,7 +19,7 @@ ADMIN_IDS=123456789,987654321
 PROXY_URL=
 
 # Logging Configuration
-# Available presets: development/production/minimal
+# Available presets: development/production/cloud/minimal (auto-detects Railway)
 LOG_PRESET=production
 
 # Optional: Override specific logging settings
@@ -27,3 +27,4 @@ LOG_PRESET=production
 # LOG_LEVEL=INFO
 # LOG_MAX_BYTES=5242880
 # LOG_BACKUP_COUNT=2
+# DISABLE_FILE_LOGGING=true  # Disable file logging for cloud environments
