@@ -6,7 +6,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
-from database.mysql import init_db as init_mysql_db
+from database.postgres import init_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 from jobs import get_scheduler
@@ -43,7 +43,7 @@ async def main():
     logger.info("Dispatcher created with memory storage")
 
     try:
-        init_mysql_db()
+        init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")

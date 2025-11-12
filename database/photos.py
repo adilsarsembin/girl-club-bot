@@ -1,7 +1,7 @@
-from database.mysql import get_connection
+from database.postgres import get_connection
 
 
-def add_photo(file_id: str, file_unique_id: str, filename: str = None, caption: str = None, uploaded_by: int = None) -> bool:
+def add_photo(file_id: str, file_unique_id: str, filename: str = None, caption: str = None, uploaded_by: int = None) -> int:
     """
     Add a photo to the database.
     """
@@ -10,14 +10,16 @@ def add_photo(file_id: str, file_unique_id: str, filename: str = None, caption: 
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO photos (file_id, file_unique_id, filename, caption, uploaded_by)
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
         """, (file_id, file_unique_id, filename, caption, uploaded_by))
+        photo_id = cursor.fetchone()['id']
         conn.commit()
+        cursor.close()
         conn.close()
-        return True
+        return photo_id
     except Exception as exception:
         print(exception)
-        return False
+        return 0
 
 
 def get_random_photo() -> dict:
@@ -27,20 +29,12 @@ def get_random_photo() -> dict:
     """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, file_id, file_unique_id, filename, caption, uploaded_at FROM photos ORDER BY RAND() LIMIT 1")
+    cursor.execute("SELECT id, file_id, file_unique_id, filename, caption, uploaded_at FROM photos ORDER BY RANDOM() LIMIT 1")
     result = cursor.fetchone()
+    cursor.close()
     conn.close()
 
-    if result:
-        return {
-            'id': result[0],
-            'file_id': result[1],
-            'file_unique_id': result[2],
-            'filename': result[3],
-            'caption': result[4],
-            'uploaded_at': result[5]
-        }
-    return None
+    return dict(result) if result else None
 
 
 def get_all_photos() -> list[tuple]:
@@ -51,7 +45,8 @@ def get_all_photos() -> list[tuple]:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, file_id, filename, caption, uploaded_at FROM photos ORDER BY uploaded_at DESC")
-    photos = cursor.fetchall()
+    photos = [(row['id'], row['file_id'], row['filename'], row['caption'], row['uploaded_at']) for row in cursor.fetchall()]
+    cursor.close()
     conn.close()
     return photos
 
@@ -65,8 +60,10 @@ def delete_photo(photo_id: int) -> bool:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM photos WHERE id = %s", (photo_id,))
         conn.commit()
+        deleted = cursor.rowcount > 0
+        cursor.close()
         conn.close()
-        return cursor.rowcount > 0
+        return deleted
     except Exception as exception:
         print(exception)
         return False
@@ -80,15 +77,7 @@ def get_photo_by_id(photo_id: int) -> dict:
     cursor = conn.cursor()
     cursor.execute("SELECT id, file_id, file_unique_id, filename, caption, uploaded_at FROM photos WHERE id = %s", (photo_id,))
     result = cursor.fetchone()
+    cursor.close()
     conn.close()
 
-    if result:
-        return {
-            'id': result[0],
-            'file_id': result[1],
-            'file_unique_id': result[2],
-            'filename': result[3],
-            'caption': result[4],
-            'uploaded_at': result[5]
-        }
-    return None
+    return dict(result) if result else None

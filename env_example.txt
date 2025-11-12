@@ -1,19 +1,21 @@
 # Copy this file to .env and fill in your values
+
 # Telegram Bot Configuration
 TELEGRAM_API_TOKEN=your_bot_token_from_botfather
 
-# Database Configuration
-DB_HOST=localhost
-DB_NAME=girl_club_bot
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
+# Database Configuration (Railway provides DATABASE_URL automatically)
+# For local development, uncomment and set these:
+# DB_HOST=localhost
+# DB_NAME=girl_club_bot
+# DB_USER=postgres
+# DB_PASSWORD=your_password
 
 # Admin Configuration (comma-separated Telegram user IDs)
 # Get your user ID from @userinfobot
 ADMIN_IDS=123456789,987654321
 
-# Proxy Configuration (leave empty for local development)
-# For PythonAnywhere/production, set your proxy URL
+# Proxy Configuration (leave empty for most deployments)
+# Only needed if your hosting region blocks Telegram
 PROXY_URL=
 
 # Logging Configuration
