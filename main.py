@@ -10,24 +10,19 @@ from database.mysql import init_db as init_mysql_db
 from handlers.admin import router as admin_router
 from handlers.user import router as user_router
 from jobs import get_scheduler
-from logging_config import setup_logging_from_env, get_logger
+from logging_config import setup_logging_from_env
 
 load_dotenv()
 
-# Initialize logging from configuration
 logger = setup_logging_from_env()
 
-async def main():
-    """The main function to start the bot."""
-    logger.info("=== GirlClub Bot Starting Up ===")
 
+async def main():
     api_token = os.getenv("TELEGRAM_API_TOKEN")
     if not api_token:
         logger.error("TELEGRAM_API_TOKEN not found in environment variables")
         raise ValueError("TELEGRAM_API_TOKEN not found in environment variables")
 
-    # Use proxy only if PROXY_URL is set (for production like PythonAnywhere)
-    # For local testing, leave PROXY_URL empty or don't set it
     proxy_url = os.getenv("PROXY_URL")
     if proxy_url:
         session = AiohttpSession(proxy=proxy_url)

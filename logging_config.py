@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 
 def setup_logging(
     log_file: str = "girl_club_bot.log",
-    max_bytes: int = 5 * 1024 * 1024,  # 5MB
+    max_bytes: int = 5 * 1024 * 1024,
     backup_count: int = 2,
     log_level: int = logging.INFO,
     console_level: int = logging.WARNING
@@ -29,20 +29,16 @@ def setup_logging(
         Configured logger instance
     """
 
-    # Create logger
     logger = logging.getLogger()
     logger.setLevel(log_level)
 
-    # Clear any existing handlers to avoid duplicates
     logger.handlers.clear()
 
-    # Create formatter with clean, readable format
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # File handler with rotation for memory efficiency
     file_handler = RotatingFileHandler(
         log_file,
         maxBytes=max_bytes,
@@ -52,12 +48,10 @@ def setup_logging(
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
 
-    # Console handler for development/debugging (less verbose)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
     console_handler.setFormatter(formatter)
 
-    # Add handlers to logger
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
@@ -67,21 +61,14 @@ def setup_logging(
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance with the specified name
-
-    Args:
-        name: Logger name (usually __name__)
-
-    Returns:
-        Logger instance
     """
     return logging.getLogger(name)
 
 
-# Configuration presets for different environments
 LOGGING_PRESETS = {
     'development': {
         'log_file': 'girl_club_bot_dev.log',
-        'max_bytes': 10 * 1024 * 1024,  # 10MB for development
+        'max_bytes': 10 * 1024 * 1024,
         'backup_count': 3,
         'log_level': logging.DEBUG,
         'console_level': logging.INFO
@@ -89,7 +76,7 @@ LOGGING_PRESETS = {
 
     'production': {
         'log_file': 'girl_club_bot.log',
-        'max_bytes': 5 * 1024 * 1024,  # 5MB for production (memory limited)
+        'max_bytes': 5 * 1024 * 1024,
         'backup_count': 2,
         'log_level': logging.INFO,
         'console_level': logging.WARNING
@@ -97,7 +84,7 @@ LOGGING_PRESETS = {
 
     'minimal': {
         'log_file': 'girl_club_bot.log',
-        'max_bytes': 2 * 1024 * 1024,  # 2MB minimal
+        'max_bytes': 2 * 1024 * 1024,
         'backup_count': 1,
         'log_level': logging.WARNING,
         'console_level': logging.ERROR
@@ -117,7 +104,6 @@ def setup_logging_from_env() -> logging.Logger:
     - LOG_MAX_BYTES: max bytes per file
     - LOG_BACKUP_COUNT: number of backup files
     """
-    # Get preset from environment or default to production
     preset_name = os.getenv('LOG_PRESET', 'production')
 
     if preset_name not in LOGGING_PRESETS:
@@ -125,7 +111,6 @@ def setup_logging_from_env() -> logging.Logger:
 
     config = LOGGING_PRESETS[preset_name].copy()
 
-    # Override with environment variables if set
     if os.getenv('LOG_FILE'):
         config['log_file'] = os.getenv('LOG_FILE')
 
@@ -143,18 +128,17 @@ def setup_logging_from_env() -> logging.Logger:
         try:
             config['max_bytes'] = int(os.getenv('LOG_MAX_BYTES'))
         except ValueError:
-            pass  # Keep default
+            pass
 
     if os.getenv('LOG_BACKUP_COUNT'):
         try:
             config['backup_count'] = int(os.getenv('LOG_BACKUP_COUNT'))
         except ValueError:
-            pass  # Keep default
+            pass
 
     return setup_logging(**config)
 
 
-# Utility functions for common logging patterns
 def log_user_action(logger: logging.Logger, user_id: int, username: str, action: str, details: str = None):
     """Log user actions with consistent format"""
     if details:

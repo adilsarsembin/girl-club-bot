@@ -309,16 +309,12 @@ async def cmd_delete_photo(message: Message):
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
     for photo_id, file_id, filename, caption, uploaded_at in photos:
-        # Create a meaningful display name
         if caption and caption.strip():
-            # Use caption if available (truncate if too long)
             display_name = caption.strip()[:35] + "..." if len(caption.strip()) > 35 else caption.strip()
         elif filename:
-            # Use filename if available
             display_name = filename[:35] + "..." if len(filename) > 35 else filename
         else:
-            # Use generic name with upload date
-            upload_date = str(uploaded_at).split()[0]  # Get date part only
+            upload_date = str(uploaded_at).split()[0]
             display_name = f"Фото от {upload_date}"
 
         keyboard.inline_keyboard.append([InlineKeyboardButton(
@@ -543,7 +539,6 @@ async def process_events_management(callback: CallbackQuery, state: FSMContext):
     if action == "add":
         markup = await SimpleCalendar().start_calendar()
         await callback.message.edit_text("📅 <b>Давай создадим чудесное событие!</b>\n\nВыбери дату, когда соберемся вместе 💕", reply_markup=markup, parse_mode="HTML")
-        # Note: This will trigger the calendar callback, so we don't need to set state here
 
     elif action == "list":
         events = get_all_events()
@@ -553,11 +548,9 @@ async def process_events_management(callback: CallbackQuery, state: FSMContext):
 
         response = "🎊 <b>Все события в расписании:</b>\n\n"
         for event_id, planned_at, theme, place in events:
-            # planned_at is already a datetime object from MySQL
             if isinstance(planned_at, datetime):
                 formatted_date = planned_at.strftime('%d.%m.%Y в %H:%M')
             else:
-                # Fallback for string format
                 try:
                     event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
                     formatted_date = event_dt.strftime('%d.%m.%Y в %H:%M')
@@ -579,11 +572,9 @@ async def process_events_management(callback: CallbackQuery, state: FSMContext):
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[])
         for event_id, planned_at, theme, place in events:
-            # planned_at is already a datetime object from MySQL
             if isinstance(planned_at, datetime):
                 display_date = planned_at.strftime('%d.%m %H:%M')
             else:
-                # Fallback for string format
                 try:
                     event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
                     display_date = event_dt.strftime('%d.%m %H:%M')

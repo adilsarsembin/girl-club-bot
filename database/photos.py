@@ -66,7 +66,7 @@ def delete_photo(photo_id: int) -> bool:
         cursor.execute("DELETE FROM photos WHERE id = %s", (photo_id,))
         conn.commit()
         conn.close()
-        return cursor.rowcount > 0  # Returns True if at least one row was deleted
+        return cursor.rowcount > 0
     except Exception as exception:
         print(exception)
         return False

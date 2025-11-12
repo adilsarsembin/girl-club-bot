@@ -74,7 +74,7 @@ async def send_help(message: types.Message, bot: Bot):
     if is_admin:
         help_text += "💕 <b>Команды для всех участниц:</b>\n"
         for cmd in user_commands:
-            if cmd.command != "help":  # Skip help command in list
+            if cmd.command != "help":
                 help_text += f"✨ /{cmd.command} - {cmd.description}\n"
 
         help_text += "\n👑 <b>Управление клубом:</b>\n"
@@ -158,7 +158,7 @@ async def process_motivation_choice(callback: CallbackQuery):
             caption += f"\n\n💭 {photo['caption']}"
         caption += "\n\n🌟 Пусть она наполнит тебя силой и красотой!"
 
-        await callback.message.delete()  # Remove the selection message
+        await callback.message.delete()
         await callback.message.answer_photo(
             photo=photo['file_id'],
             caption=caption,
@@ -215,11 +215,9 @@ async def get_events(message: Message):
     await message.reply(intro_message, parse_mode="HTML")
 
     for _, planned_at, place, theme in events:
-        # Format the date nicely - planned_at is already a datetime object from MySQL
         if isinstance(planned_at, datetime):
             formatted_date = planned_at.strftime('%d.%m.%Y в %H:%M')
         else:
-            # Fallback for string format
             try:
                 event_dt = datetime.strptime(str(planned_at), '%Y-%m-%d %H:%M:%S')
                 formatted_date = event_dt.strftime('%d.%m.%Y в %H:%M')

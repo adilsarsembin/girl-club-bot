@@ -37,7 +37,7 @@ def delete_event(event_id: int) -> bool:
         cursor.execute("DELETE FROM events WHERE id = %s", (event_id,))
         conn.commit()
         conn.close()
-        return cursor.rowcount > 0  # Returns True if at least one row was deleted
+        return cursor.rowcount > 0
     except Exception as exception:
         print(exception)
         return False

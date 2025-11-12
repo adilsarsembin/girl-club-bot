@@ -24,24 +24,20 @@ async def send_event_reminder(bot: Bot, theme: str, place: str, event_datetime: 
     """
     Send event reminder to all users 24 hours before the event.
     """
-    # Parse the event datetime to extract just the time part for the message
     try:
         event_dt = datetime.strptime(event_datetime, '%Y-%m-%d %H:%M:%S')
-        event_time = event_dt.strftime('%H:%M')  # Extract just HH:MM
-        event_date = event_dt.strftime('%d.%m.%Y')  # Format date nicely
+        event_time = event_dt.strftime('%H:%M')
+        event_date = event_dt.strftime('%d.%m.%Y')
     except ValueError:
-        # Fallback if parsing fails
         event_time = "указанное время"
         event_date = "указанную дату"
 
-    # Get all users (not just 'user' role, but all active users)
     user_ids = get_all_user_ids_by_role('user')
 
     if not user_ids:
         print("Warning: No users found to send event reminder to")
         return
 
-    # Create a better formatted message
     msg = f"📅 <b>Напоминание о событии!</b>\n\n"
     msg += f"📆 <b>Дата:</b> {event_date}\n"
     msg += f"⏰ <b>Время:</b> {event_time}\n"
@@ -75,15 +71,12 @@ async def schedule_reminder(bot: Bot, event_datetime: str, event_id: int, theme:
         now = datetime.now()
 
         if reminder_time <= now:
-            # Event is less than 24 hours away, send reminder immediately
             print(f"Event '{theme}' is scheduled for {event_datetime}, sending immediate reminder")
             await send_event_reminder(bot, theme, place, event_datetime)
         else:
-            # Schedule reminder for 24 hours before the event
             scheduler = get_scheduler()
             job_id = f"reminder_{event_id}"
 
-            # Remove any existing job with the same ID (in case of event update)
             if scheduler.get_job(job_id):
                 scheduler.remove_job(job_id)
 
